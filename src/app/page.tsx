@@ -15,6 +15,12 @@ export default async function Home() {
             Ви увійшли як <strong>{session.user.email}</strong> (
             {session.user.role})
           </p>
+          <Link
+            href={`/${session.user.role}/dashboard`}
+            className="text-sm underline"
+          >
+            Мій кабінет
+          </Link>
           <LogoutButton />
         </div>
       ) : (
