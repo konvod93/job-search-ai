@@ -10,6 +10,7 @@ import {
   jsonb,
   real,
   boolean,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -115,20 +116,30 @@ export const jobs = pgTable("jobs", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const applications = pgTable("applications", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id, { onDelete: "cascade" }),
-  candidateId: uuid("candidate_id")
-    .notNull()
-    .references(() => candidateProfiles.id, { onDelete: "cascade" }),
-  status: applicationStatusEnum("status").notNull().default("applied"),
-  coverLetter: text("cover_letter"),
-  matchScore: real("match_score"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const applications = pgTable(
+  "applications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => candidateProfiles.id, { onDelete: "cascade" }),
+    status: applicationStatusEnum("status").notNull().default("applied"),
+    coverLetter: text("cover_letter"),
+    matchScore: real("match_score"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Один кандидат — одна заявка на конкретну вакансію
+    unique("applications_job_candidate_unique").on(
+      table.jobId,
+      table.candidateId,
+    ),
+  ],
+);
 
 // Антифрод: скарги користувачів на вакансії (МЛМ, шахрайство, спам).
 // Логіка розгляду скарг (адмін-панель) — окремий крок пізніше.

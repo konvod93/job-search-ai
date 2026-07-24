@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { auth } from "@/auth";
 import { db } from "@/db";
-import { employerProfiles, jobs } from "@/db/schema";
+import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/schema";
 import { EMPLOYMENT_TYPE_LABELS } from "@/lib/job-options";
+import ApplyForm from "@/components/apply-form";
 
 export default async function JobDetailPage({
   params,
@@ -26,6 +29,48 @@ export default async function JobDetailPage({
   }
 
   const { job, companyName } = row;
+
+  const session = await auth();
+  let applyBlock = (
+    <Link href="/login" className="text-sm underline">
+      Увійдіть, щоб відгукнутись
+    </Link>
+  );
+
+  if (session?.user?.role === "candidate") {
+    const [candidateProfile] = await db
+      .select({ id: candidateProfiles.id })
+      .from(candidateProfiles)
+      .where(eq(candidateProfiles.userId, session.user.id))
+      .limit(1);
+
+    const [existingApplication] = candidateProfile
+      ? await db
+          .select({ id: applications.id })
+          .from(applications)
+          .where(
+            and(
+              eq(applications.jobId, job.id),
+              eq(applications.candidateId, candidateProfile.id),
+            ),
+          )
+          .limit(1)
+      : [];
+
+    applyBlock = existingApplication ? (
+      <p className="rounded bg-neutral-100 px-4 py-3 text-sm text-neutral-600">
+        Ви вже відгукнулись на цю вакансію
+      </p>
+    ) : (
+      <ApplyForm jobId={job.id} />
+    );
+  } else if (session?.user?.role === "employer") {
+    applyBlock = (
+      <p className="text-sm text-neutral-400">
+        Відгукуватись можуть тільки кандидати
+      </p>
+    );
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-8">
@@ -67,7 +112,7 @@ export default async function JobDetailPage({
         {job.description}
       </p>
 
-      {/* Кнопка "Відгукнутись" з'явиться, коли зробимо applications */}
+      <div className="mt-2 border-t border-neutral-200 pt-4">{applyBlock}</div>
     </main>
   );
 }

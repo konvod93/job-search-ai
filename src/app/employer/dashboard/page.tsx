@@ -6,6 +6,7 @@ import { employerProfiles, jobs } from "@/db/schema";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
+  pending_review: "На модерації",
   published: "Опубліковано",
   closed: "Закрито",
 };
@@ -49,9 +50,10 @@ export default async function EmployerDashboard() {
           <p className="text-neutral-500">Ще немає жодної вакансії.</p>
         )}
         {myJobs.map((job) => (
-          <div
+          <Link
             key={job.id}
-            className="flex items-center justify-between rounded border border-neutral-200 p-4"
+            href={`/employer/jobs/${job.id}/applicants`}
+            className="flex items-center justify-between rounded border border-neutral-200 p-4 hover:bg-neutral-50"
           >
             <div>
               <p className="font-medium">{job.title}</p>
@@ -62,7 +64,7 @@ export default async function EmployerDashboard() {
             <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs">
               {STATUS_LABELS[job.status]}
             </span>
-          </div>
+          </Link>
         ))}
       </div>
     </main>

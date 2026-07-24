@@ -15,6 +15,13 @@
       "when": 1784884198584,
       "tag": "0001_outstanding_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784887129426,
+      "tag": "0002_nosy_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }
