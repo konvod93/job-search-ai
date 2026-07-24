@@ -9,6 +9,7 @@ import {
   vector,
   jsonb,
   real,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -30,6 +31,7 @@ export const employmentTypeEnum = pgEnum("employment_type", [
 
 export const jobStatusEnum = pgEnum("job_status", [
   "draft",
+  "pending_review",
   "published",
   "closed",
 ]);
@@ -40,6 +42,12 @@ export const applicationStatusEnum = pgEnum("application_status", [
   "interview",
   "rejected",
   "hired",
+]);
+
+export const reportStatusEnum = pgEnum("report_status", [
+  "pending",
+  "reviewed",
+  "dismissed",
 ]);
 
 // ---------- Tables ----------
@@ -82,6 +90,9 @@ export const employerProfiles = pgTable("employer_profiles", {
   companyDescription: text("company_description"),
   website: varchar("website", { length: 255 }),
   location: varchar("location", { length: 255 }),
+  // Антифрод: чи підтверджена компанія (корп. пошта / ЄДРПОУ тощо).
+  // Логіку верифікації додамо пізніше, поле — заготовка під неї.
+  verified: boolean("verified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -117,6 +128,21 @@ export const applications = pgTable("applications", {
   matchScore: real("match_score"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Антифрод: скарги користувачів на вакансії (МЛМ, шахрайство, спам).
+// Логіка розгляду скарг (адмін-панель) — окремий крок пізніше.
+export const reports = pgTable("reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobId: uuid("job_id")
+    .notNull()
+    .references(() => jobs.id, { onDelete: "cascade" }),
+  reporterId: uuid("reporter_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  status: reportStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // ---------- Relations ----------
@@ -160,6 +186,7 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
     references: [employerProfiles.id],
   }),
   applications: many(applications),
+  reports: many(reports),
 }));
 
 export const applicationsRelations = relations(applications, ({ one }) => ({
@@ -170,5 +197,16 @@ export const applicationsRelations = relations(applications, ({ one }) => ({
   candidate: one(candidateProfiles, {
     fields: [applications.candidateId],
     references: [candidateProfiles.id],
+  }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  job: one(jobs, {
+    fields: [reports.jobId],
+    references: [jobs.id],
+  }),
+  reporter: one(users, {
+    fields: [reports.reporterId],
+    references: [users.id],
   }),
 }));
