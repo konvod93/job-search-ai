@@ -9,6 +9,10 @@ export default async function Home() {
     <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <h1 className="text-3xl font-semibold">JobSearch AI</h1>
 
+      <Link href="/jobs" className="text-sm underline">
+        Переглянути вакансії
+      </Link>
+
       {session?.user ? (
         <div className="flex flex-col items-center gap-2">
           <p className="text-neutral-600">

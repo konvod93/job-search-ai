@@ -2,14 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const EMPLOYMENT_TYPES = [
-  { value: "full_time", label: "Повна зайнятість" },
-  { value: "part_time", label: "Часткова зайнятість" },
-  { value: "contract", label: "Контракт" },
-  { value: "internship", label: "Стажування" },
-  { value: "remote", label: "Віддалено" },
-] as const;
+import { EMPLOYMENT_TYPES } from "@/lib/job-options";
 
 export default function NewJobPage() {
   const router = useRouter();
