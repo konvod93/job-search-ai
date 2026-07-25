@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
@@ -78,6 +79,13 @@ export default function LoginPage() {
         >
           {isSubmitting ? "Входимо..." : "Увійти"}
         </button>
+
+        <p className="text-center text-sm text-neutral-500">
+          Немає акаунту?{" "}
+          <Link href="/register" className="underline">
+            Зареєструватись
+          </Link>
+        </p>
       </form>
     </main>
   );
