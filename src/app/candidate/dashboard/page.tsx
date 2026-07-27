@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { applications, candidateProfiles, jobs } from "@/db/schema";
+import { requireRole } from "@/lib/require-role";
 
 const STATUS_LABELS: Record<string, string> = {
   applied: "Відправлено",
@@ -13,12 +13,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function CandidateDashboard() {
-  const session = await auth();
+  const session = await requireRole("candidate");
 
   const [candidateProfile] = await db
     .select({ id: candidateProfiles.id, fullName: candidateProfiles.fullName })
     .from(candidateProfiles)
-    .where(eq(candidateProfiles.userId, session!.user.id))
+    .where(eq(candidateProfiles.userId, session.user.id))
     .limit(1);
 
   const myApplications = candidateProfile
@@ -38,11 +38,19 @@ export default async function CandidateDashboard() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold">
-          {candidateProfile?.fullName ?? "Кабінет кандидата"}
-        </h1>
-        <p className="text-sm text-neutral-500">{session?.user?.email}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {candidateProfile?.fullName ?? "Кабінет кандидата"}
+          </h1>
+          <p className="text-sm text-neutral-500">{session.user.email}</p>
+        </div>
+        <Link
+          href="/candidate/profile"
+          className="rounded border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-100"
+        >
+          Мій профіль / резюме
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3">

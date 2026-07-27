@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
+import { requireRole } from "@/lib/require-role";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
@@ -12,12 +12,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function EmployerDashboard() {
-  const session = await auth();
+  const session = await requireRole("employer");
 
   const [employerProfile] = await db
     .select({ id: employerProfiles.id, companyName: employerProfiles.companyName })
     .from(employerProfiles)
-    .where(eq(employerProfiles.userId, session!.user.id))
+    .where(eq(employerProfiles.userId, session.user.id))
     .limit(1);
 
   const myJobs = employerProfile
@@ -35,7 +35,7 @@ export default async function EmployerDashboard() {
           <h1 className="text-2xl font-semibold">
             {employerProfile?.companyName ?? "Кабінет роботодавця"}
           </h1>
-          <p className="text-sm text-neutral-500">{session?.user?.email}</p>
+          <p className="text-sm text-neutral-500">{session.user.email}</p>
         </div>
         <Link
           href="/employer/jobs/new"
