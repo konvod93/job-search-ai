@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { candidateProfiles } from "@/db/schema";
+import { generateEmbedding } from "@/lib/embeddings";
 
 const updateProfileSchema = z.object({
   fullName: z.string().min(1).optional(),
@@ -65,6 +66,37 @@ export async function PATCH(request: Request) {
 
   if (!updated) {
     return NextResponse.json({ error: "Профіль не знайдено" }, { status: 404 });
+  }
+
+  // Оновлюємо embedding для семантичного матчингу, якщо змінились релевантні
+  // поля. Не блокуємо збереження профілю, якщо генерація embedding впаде
+  // (наприклад, немає OPENAI_API_KEY) — це некритична частина запиту.
+  const embeddingRelevant =
+    parsed.data.headline !== undefined ||
+    parsed.data.skills !== undefined ||
+    parsed.data.resumeText !== undefined;
+
+  if (embeddingRelevant) {
+    try {
+      const sourceText = [
+        updated.headline,
+        (updated.skills ?? []).join(", "),
+        updated.resumeText,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const embedding = await generateEmbedding(sourceText);
+
+      if (embedding) {
+        await db
+          .update(candidateProfiles)
+          .set({ embedding })
+          .where(eq(candidateProfiles.id, updated.id));
+      }
+    } catch (err) {
+      console.error("[candidate/profile] embedding generation failed:", err);
+    }
   }
 
   return NextResponse.json(updated);

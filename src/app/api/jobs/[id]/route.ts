@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
+import { generateEmbedding } from "@/lib/embeddings";
 
 const updateJobSchema = z.object({
   title: z.string().min(1).optional(),
@@ -84,6 +85,32 @@ export async function PATCH(
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(jobs.id, id))
     .returning();
+
+  const embeddingRelevant =
+    parsed.data.title !== undefined ||
+    parsed.data.description !== undefined ||
+    parsed.data.skillsRequired !== undefined;
+
+  if (embeddingRelevant && updated) {
+    try {
+      const sourceText = [
+        updated.title,
+        (updated.skillsRequired ?? []).join(", "),
+        updated.description,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const embedding = await generateEmbedding(sourceText);
+
+      if (embedding) {
+        await db.update(jobs).set({ embedding }).where(eq(jobs.id, id));
+        updated.embedding = embedding;
+      }
+    } catch (err) {
+      console.error("[jobs/[id]] embedding generation failed:", err);
+    }
+  }
 
   return NextResponse.json(updated);
 }

@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
+import { generateEmbedding } from "@/lib/embeddings";
 
 const createJobSchema = z.object({
   title: z.string().min(1, "Вкажіть назву вакансії"),
@@ -121,6 +122,28 @@ export async function POST(request: Request) {
       status: parsed.data.status,
     })
     .returning();
+
+  // Embedding для семантичного матчингу з кандидатами. Некритична частина
+  // запиту — вакансія вже створена, помилка генерації не повинна ламати
+  // основний флоу.
+  try {
+    const sourceText = [
+      job.title,
+      (job.skillsRequired ?? []).join(", "),
+      job.description,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const embedding = await generateEmbedding(sourceText);
+
+    if (embedding) {
+      await db.update(jobs).set({ embedding }).where(eq(jobs.id, job.id));
+      job.embedding = embedding;
+    }
+  } catch (err) {
+    console.error("[jobs] embedding generation failed:", err);
+  }
 
   return NextResponse.json(job, { status: 201 });
 }
