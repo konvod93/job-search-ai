@@ -50,21 +50,31 @@ export default async function EmployerDashboard() {
           <p className="text-neutral-500">Ще немає жодної вакансії.</p>
         )}
         {myJobs.map((job) => (
-          <Link
+          <div
             key={job.id}
-            href={`/employer/jobs/${job.id}/applicants`}
-            className="flex items-center justify-between rounded border border-neutral-200 p-4 hover:bg-neutral-50"
+            className="flex items-center justify-between rounded border border-neutral-200 p-4"
           >
-            <div>
+            <Link
+              href={`/employer/jobs/${job.id}/applicants`}
+              className="flex-1 hover:underline"
+            >
               <p className="font-medium">{job.title}</p>
               <p className="text-sm text-neutral-500">
                 {job.location ?? "Без локації"}
               </p>
+            </Link>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs">
+                {STATUS_LABELS[job.status]}
+              </span>
+              <Link
+                href={`/employer/jobs/${job.id}/edit`}
+                className="text-sm text-neutral-500 underline"
+              >
+                Редагувати
+              </Link>
             </div>
-            <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs">
-              {STATUS_LABELS[job.status]}
-            </span>
-          </Link>
+          </div>
         ))}
       </div>
     </main>
