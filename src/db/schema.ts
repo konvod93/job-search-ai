@@ -111,6 +111,9 @@ export const jobs = pgTable("jobs", {
   salaryMax: integer("salary_max"),
   skillsRequired: jsonb("skills_required").$type<string[]>().default([]),
   status: jobStatusEnum("status").notNull().default("draft"),
+  // Причина, з якою AI-модерація відправила вакансію на pending_review
+  // (наприклад, "схоже на МЛМ"). null — модерацію пройдено або ще не було.
+  moderationReason: text("moderation_reason"),
   embedding: vector("embedding", { dimensions: 1536 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

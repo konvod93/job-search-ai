@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
+import { moderateJobListing } from "@/lib/moderation";
 
 const createJobSchema = z.object({
   title: z.string().min(1, "Вкажіть назву вакансії"),
@@ -108,6 +109,24 @@ export async function POST(request: Request) {
     );
   }
 
+  // AI-модерація: перевіряємо тільки коли employer намагається одразу
+  // опублікувати (чернетку сенсу перевіряти немає — її ще ніхто не бачить).
+  // При збої AI-перевірки навмисно "fail open" (пропускаємо як є) — щоб
+  // тимчасова недоступність AI не блокувала легітимних роботодавців.
+  let status: "draft" | "published" | "pending_review" = parsed.data.status;
+  let moderationReason: string | null = null;
+
+  if (status === "published") {
+    const moderation = await moderateJobListing(
+      parsed.data.title,
+      parsed.data.description,
+    );
+    if (moderation?.flagged) {
+      status = "pending_review";
+      moderationReason = moderation.reason;
+    }
+  }
+
   const [job] = await db
     .insert(jobs)
     .values({
@@ -119,7 +138,8 @@ export async function POST(request: Request) {
       salaryMin: parsed.data.salaryMin,
       salaryMax: parsed.data.salaryMax,
       skillsRequired: parsed.data.skillsRequired ?? [],
-      status: parsed.data.status,
+      status,
+      moderationReason,
     })
     .returning();
 

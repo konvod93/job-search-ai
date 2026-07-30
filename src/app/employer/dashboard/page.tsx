@@ -62,9 +62,20 @@ export default async function EmployerDashboard() {
               <p className="text-sm text-neutral-500">
                 {job.location ?? "Без локації"}
               </p>
+              {job.status === "pending_review" && job.moderationReason && (
+                <p className="mt-1 text-xs text-amber-700">
+                  ⚠ {job.moderationReason}
+                </p>
+              )}
             </Link>
             <div className="flex items-center gap-3">
-              <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs">
+              <span
+                className={`rounded-full px-3 py-1 text-xs ${
+                  job.status === "pending_review"
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-neutral-100"
+                }`}
+              >
                 {STATUS_LABELS[job.status]}
               </span>
               <Link

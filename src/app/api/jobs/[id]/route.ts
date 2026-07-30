@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
+import { moderateJobListing } from "@/lib/moderation";
 
 const updateJobSchema = z.object({
   title: z.string().min(1).optional(),
@@ -80,9 +81,40 @@ export async function PATCH(
     );
   }
 
+  // Вакансія опублікована/публікується зараз → перевіряємо AI-модерацією
+  // (використовуючи вже оновлений текст, якщо title/description змінились
+  // у цьому запиті). "Fail open" при збої AI — не блокуємо employer'а.
+  const targetStatus = parsed.data.status ?? row.job.status;
+  const updates: {
+    title?: string;
+    description?: string;
+    location?: string;
+    employmentType?: (typeof parsed.data)["employmentType"];
+    salaryMin?: number;
+    salaryMax?: number;
+    skillsRequired?: string[];
+    status?: "draft" | "published" | "closed" | "pending_review";
+    moderationReason?: string | null;
+  } = { ...parsed.data };
+
+  if (targetStatus === "published") {
+    const title = parsed.data.title ?? row.job.title;
+    const description = parsed.data.description ?? row.job.description;
+
+    const moderation = await moderateJobListing(title, description);
+
+    if (moderation?.flagged) {
+      updates.status = "pending_review";
+      updates.moderationReason = moderation.reason;
+    } else if (moderation) {
+      // Пройшло перевірку — прибираємо стару причину флагу, якщо була
+      updates.moderationReason = null;
+    }
+  }
+
   const [updated] = await db
     .update(jobs)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...updates, updatedAt: new Date() })
     .where(eq(jobs.id, id))
     .returning();
 
