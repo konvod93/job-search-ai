@@ -29,6 +29,20 @@
       "when": 1785406279744,
       "tag": "0003_nostalgic_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785591995144,
+      "tag": "0004_fixed_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785592004490,
+      "tag": "0005_smart_the_hand",
+      "breakpoints": true
     }
   ]
 }

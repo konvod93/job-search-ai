@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
@@ -19,7 +20,12 @@ export default async function AdminJobsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Модерація вакансій</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Модерація вакансій</h1>
+        <Link href="/admin/employers" className="text-sm underline">
+          Верифікація роботодавців →
+        </Link>
+      </div>
 
       {pendingJobs.length === 0 && (
         <p className="text-neutral-500">Немає вакансій на модерації.</p>

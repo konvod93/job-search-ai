@@ -18,6 +18,9 @@ export default async function JobDetailPage({
     .select({
       job: jobs,
       companyName: employerProfiles.companyName,
+      companyVerified: employerProfiles.verificationStatus,
+      companyPhone: employerProfiles.phone,
+      companyPhoneVisible: employerProfiles.phoneVisible,
     })
     .from(jobs)
     .innerJoin(employerProfiles, eq(jobs.employerId, employerProfiles.id))
@@ -28,7 +31,8 @@ export default async function JobDetailPage({
     notFound();
   }
 
-  const { job, companyName } = row;
+  const { job, companyName, companyVerified, companyPhone, companyPhoneVisible } =
+    row;
 
   const session = await auth();
   let applyBlock = (
@@ -76,12 +80,22 @@ export default async function JobDetailPage({
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-8">
       <div>
         <h1 className="text-2xl font-semibold">{job.title}</h1>
-        <Link
-          href={`/companies/${job.employerId}`}
-          className="text-neutral-500 underline"
-        >
-          {companyName}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/companies/${job.employerId}`}
+            className="text-neutral-500 underline"
+          >
+            {companyName}
+          </Link>
+          {companyVerified === "verified" && (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+              ✓ Перевірено
+            </span>
+          )}
+        </div>
+        {companyPhoneVisible && companyPhone && (
+          <p className="text-sm text-neutral-500">{companyPhone}</p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm text-neutral-600">

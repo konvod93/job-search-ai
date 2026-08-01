@@ -16,6 +16,15 @@ const updateSchema = z.object({
     )
     .optional(),
   location: z.string().optional(),
+  phone: z.string().optional(),
+  phoneVisible: z.boolean().optional(),
+  edrpou: z
+    .string()
+    .refine(
+      (val) => val === "" || /^\d{8,10}$/.test(val),
+      "ЄДРПОУ/РНОКПП — 8-10 цифр",
+    )
+    .optional(),
 });
 
 export async function GET() {
@@ -55,9 +64,34 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const [existing] = await db
+    .select({
+      edrpou: employerProfiles.edrpou,
+      verificationStatus: employerProfiles.verificationStatus,
+    })
+    .from(employerProfiles)
+    .where(eq(employerProfiles.userId, session.user.id))
+    .limit(1);
+
+  if (!existing) {
+    return NextResponse.json({ error: "Профіль не знайдено" }, { status: 404 });
+  }
+
+  // Якщо employer вписав/змінив ЄДРПОУ — автоматично подаємо на розгляд
+  // адміну. Якщо очистив поле — знімаємо верифікацію.
+  let verificationStatus = existing.verificationStatus;
+  if (parsed.data.edrpou !== undefined) {
+    const newEdrpou = parsed.data.edrpou.trim();
+    if (!newEdrpou) {
+      verificationStatus = "unverified";
+    } else if (newEdrpou !== existing.edrpou) {
+      verificationStatus = "pending";
+    }
+  }
+
   const [updated] = await db
     .update(employerProfiles)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, verificationStatus, updatedAt: new Date() })
     .where(eq(employerProfiles.userId, session.user.id))
     .returning();
 

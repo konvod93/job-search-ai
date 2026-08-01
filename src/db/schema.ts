@@ -51,6 +51,13 @@ export const reportStatusEnum = pgEnum("report_status", [
   "dismissed",
 ]);
 
+export const verificationStatusEnum = pgEnum("verification_status", [
+  "unverified", // ЄДРПОУ не подано
+  "pending", // подано, чекає на перевірку адміном
+  "verified",
+  "rejected",
+]);
+
 // ---------- Tables ----------
 
 export const users = pgTable("users", {
@@ -91,9 +98,19 @@ export const employerProfiles = pgTable("employer_profiles", {
   companyDescription: text("company_description"),
   website: varchar("website", { length: 255 }),
   location: varchar("location", { length: 255 }),
-  // Антифрод: чи підтверджена компанія (корп. пошта / ЄДРПОУ тощо).
-  // Логіку верифікації додамо пізніше, поле — заготовка під неї.
-  verified: boolean("verified").notNull().default(false),
+  phone: varchar("phone", { length: 30 }),
+  // Телефон видно кандидатам на сторінці вакансії, тільки якщо employer сам
+  // це дозволив — за замовчуванням прихований.
+  phoneVisible: boolean("phone_visible").notNull().default(false),
+  // ЄДРПОУ (юрособи) або РНОКПП (ФОП/фізособи). Необов'язкове поле — без
+  // нього employer все одно може публікувати вакансії, просто без бейджа
+  // "Перевірено" (див. verificationStatus).
+  edrpou: varchar("edrpou", { length: 20 }),
+  verificationStatus: verificationStatusEnum("verification_status")
+    .notNull()
+    .default("unverified"),
+  // Коментар адміна — причина відмови у верифікації або службова нотатка.
+  verificationNote: text("verification_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -40,7 +40,12 @@ export default async function EmployerProfilePage() {
           companyDescription: profile.companyDescription ?? "",
           website: profile.website ?? "",
           location: profile.location ?? "",
+          phone: profile.phone ?? "",
+          phoneVisible: profile.phoneVisible,
+          edrpou: profile.edrpou ?? "",
         }}
+        verificationStatus={profile.verificationStatus}
+        verificationNote={profile.verificationNote}
       />
     </main>
   );

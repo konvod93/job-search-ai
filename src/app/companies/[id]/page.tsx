@@ -33,7 +33,7 @@ export default async function CompanyProfilePage({
       <div>
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-semibold">{company.companyName}</h1>
-          {company.verified && (
+          {company.verificationStatus === "verified" && (
             <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
               ✓ Перевірена компанія
             </span>
@@ -51,6 +51,9 @@ export default async function CompanyProfilePage({
           >
             {company.website}
           </a>
+        )}
+        {company.phoneVisible && company.phone && (
+          <p className="text-sm text-neutral-500">{company.phone}</p>
         )}
       </div>
 
