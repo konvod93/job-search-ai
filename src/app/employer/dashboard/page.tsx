@@ -36,6 +36,23 @@ export default async function EmployerDashboard() {
             {employerProfile?.companyName ?? "Кабінет роботодавця"}
           </h1>
           <p className="text-sm text-neutral-500">{session.user.email}</p>
+          {employerProfile && (
+            <p className="text-sm">
+              <Link
+                href={`/companies/${employerProfile.id}`}
+                className="text-neutral-500 underline"
+              >
+                Публічний профіль
+              </Link>
+              {" · "}
+              <Link
+                href="/employer/profile"
+                className="text-neutral-500 underline"
+              >
+                Редагувати профіль
+              </Link>
+            </p>
+          )}
         </div>
         <Link
           href="/employer/jobs/new"

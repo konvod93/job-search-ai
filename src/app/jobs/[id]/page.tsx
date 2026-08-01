@@ -76,7 +76,12 @@ export default async function JobDetailPage({
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 p-8">
       <div>
         <h1 className="text-2xl font-semibold">{job.title}</h1>
-        <p className="text-neutral-500">{companyName}</p>
+        <Link
+          href={`/companies/${job.employerId}`}
+          className="text-neutral-500 underline"
+        >
+          {companyName}
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm text-neutral-600">
