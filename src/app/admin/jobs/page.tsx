@@ -22,9 +22,14 @@ export default async function AdminJobsPage() {
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Модерація вакансій</h1>
-        <Link href="/admin/employers" className="text-sm underline">
-          Верифікація роботодавців →
-        </Link>
+        <div className="flex gap-3 text-sm">
+          <Link href="/admin/reports" className="underline">
+            Скарги
+          </Link>
+          <Link href="/admin/employers" className="underline">
+            Верифікація роботодавців →
+          </Link>
+        </div>
       </div>
 
       {pendingJobs.length === 0 && (

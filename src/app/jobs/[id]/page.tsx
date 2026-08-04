@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/schema";
 import { EMPLOYMENT_TYPE_LABELS } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
+import ReportJobButton from "@/components/report-job-button";
 
 export default async function JobDetailPage({
   params,
@@ -132,6 +133,12 @@ export default async function JobDetailPage({
       </p>
 
       <div className="mt-2 border-t border-neutral-200 pt-4">{applyBlock}</div>
+
+      {session?.user && (
+        <div className="border-t border-neutral-200 pt-4">
+          <ReportJobButton jobId={job.id} />
+        </div>
+      )}
     </main>
   );
 }

@@ -163,18 +163,22 @@ export const applications = pgTable(
 
 // Антифрод: скарги користувачів на вакансії (МЛМ, шахрайство, спам).
 // Логіка розгляду скарг (адмін-панель) — окремий крок пізніше.
-export const reports = pgTable("reports", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  jobId: uuid("job_id")
-    .notNull()
-    .references(() => jobs.id, { onDelete: "cascade" }),
-  reporterId: uuid("reporter_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  reason: text("reason").notNull(),
-  status: reportStatusEnum("status").notNull().default("pending"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    status: reportStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [unique("reports_job_reporter_unique").on(table.jobId, table.reporterId)],
+);
 
 // ---------- Relations ----------
 

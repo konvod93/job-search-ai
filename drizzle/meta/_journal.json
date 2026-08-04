@@ -43,6 +43,13 @@
       "when": 1785592004490,
       "tag": "0005_smart_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785835375484,
+      "tag": "0006_bored_northstar",
+      "breakpoints": true
     }
   ]
 }
