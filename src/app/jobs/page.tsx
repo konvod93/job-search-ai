@@ -2,12 +2,18 @@ import Link from "next/link";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db";
 import { jobs } from "@/db/schema";
-import { EMPLOYMENT_TYPES, EMPLOYMENT_TYPE_LABELS } from "@/lib/job-options";
+import {
+  EMPLOYMENT_TYPES,
+  EMPLOYMENT_TYPE_LABELS,
+  JOB_CATEGORIES,
+  JOB_CATEGORY_LABELS,
+} from "@/lib/job-options";
 
 type SearchParams = Promise<{
   q?: string;
   location?: string;
   employmentType?: string;
+  category?: string;
 }>;
 
 export default async function JobsPage({
@@ -15,7 +21,7 @@ export default async function JobsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { q, location, employmentType } = await searchParams;
+  const { q, location, employmentType, category } = await searchParams;
 
   const filters = [eq(jobs.status, "published")];
 
@@ -33,6 +39,11 @@ export default async function JobsPage({
   ) {
     filters.push(
       eq(jobs.employmentType, employmentType as (typeof EMPLOYMENT_TYPES)[number]["value"]),
+    );
+  }
+  if (category && JOB_CATEGORIES.some((c) => c.value === category)) {
+    filters.push(
+      eq(jobs.category, category as (typeof JOB_CATEGORIES)[number]["value"]),
     );
   }
 
@@ -62,6 +73,18 @@ export default async function JobsPage({
           placeholder="Локація"
           className="w-40 rounded border border-neutral-300 px-3 py-2"
         />
+        <select
+          name="category"
+          defaultValue={category ?? ""}
+          className="rounded border border-neutral-300 px-3 py-2"
+        >
+          <option value="">Будь-яка категорія</option>
+          {JOB_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
         <select
           name="employmentType"
           defaultValue={employmentType ?? ""}
@@ -106,6 +129,9 @@ export default async function JobsPage({
                 ? ` · ${job.salaryMin ?? "?"}–${job.salaryMax ?? "?"}`
                 : ""}
             </p>
+            <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+              {JOB_CATEGORY_LABELS[job.category]}
+            </span>
           </Link>
         ))}
       </div>

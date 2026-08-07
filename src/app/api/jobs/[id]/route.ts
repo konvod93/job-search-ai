@@ -11,6 +11,21 @@ const updateJobSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   location: z.string().optional(),
+  category: z
+    .enum([
+      "it",
+      "construction",
+      "manufacturing",
+      "trade",
+      "drivers",
+      "agriculture",
+      "government",
+      "accounting",
+      "education",
+      "military",
+      "other",
+    ])
+    .optional(),
   employmentType: z
     .enum(["full_time", "part_time", "contract", "internship", "remote"])
     .optional(),
@@ -89,6 +104,7 @@ export async function PATCH(
     title?: string;
     description?: string;
     location?: string;
+    category?: (typeof parsed.data)["category"];
     employmentType?: (typeof parsed.data)["employmentType"];
     salaryMin?: number;
     salaryMax?: number;

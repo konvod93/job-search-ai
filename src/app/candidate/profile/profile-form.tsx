@@ -2,11 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { JOB_CATEGORIES } from "@/lib/job-options";
+
+type Category = (typeof JOB_CATEGORIES)[number]["value"];
 
 type Initial = {
   fullName: string;
   headline: string;
   location: string;
+  preferredCategory: Category | null;
   experienceYears: number | null;
   skills: string[];
   resumeText: string;
@@ -18,6 +22,9 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
   const [fullName, setFullName] = useState(initial.fullName);
   const [headline, setHeadline] = useState(initial.headline);
   const [location, setLocation] = useState(initial.location);
+  const [preferredCategory, setPreferredCategory] = useState<Category | "">(
+    initial.preferredCategory ?? "",
+  );
   const [experienceYears, setExperienceYears] = useState(
     initial.experienceYears?.toString() ?? "",
   );
@@ -76,6 +83,7 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
         fullName,
         headline: headline || undefined,
         location: location || undefined,
+        preferredCategory: preferredCategory || null,
         experienceYears: experienceYears ? Number(experienceYears) : undefined,
         skills,
         resumeText: resumeText || undefined,
@@ -149,6 +157,25 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
           onChange={(e) => setHeadline(e.target.value)}
           className="rounded border border-neutral-300 px-3 py-2"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="preferredCategory" className="text-sm text-neutral-600">
+          Бажана сфера роботи
+        </label>
+        <select
+          id="preferredCategory"
+          value={preferredCategory}
+          onChange={(e) => setPreferredCategory(e.target.value as Category | "")}
+          className="rounded border border-neutral-300 px-3 py-2"
+        >
+          <option value="">Не вказано (рекомендації по всіх сферах)</option>
+          {JOB_CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex gap-4">

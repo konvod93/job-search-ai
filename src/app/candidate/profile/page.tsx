@@ -21,6 +21,7 @@ export default async function CandidateProfilePage() {
           fullName: profile?.fullName ?? "",
           headline: profile?.headline ?? "",
           location: profile?.location ?? "",
+          preferredCategory: profile?.preferredCategory ?? null,
           experienceYears: profile?.experienceYears ?? null,
           skills: profile?.skills ?? [],
           resumeText: profile?.resumeText ?? "",

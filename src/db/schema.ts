@@ -37,6 +37,20 @@ export const jobStatusEnum = pgEnum("job_status", [
   "closed",
 ]);
 
+export const jobCategoryEnum = pgEnum("job_category", [
+  "it",
+  "construction",
+  "manufacturing",
+  "trade",
+  "drivers",
+  "agriculture",
+  "government",
+  "accounting",
+  "education",
+  "military",
+  "other",
+]);
+
 export const applicationStatusEnum = pgEnum("application_status", [
   "applied",
   "viewed",
@@ -78,6 +92,9 @@ export const candidateProfiles = pgTable("candidate_profiles", {
   fullName: varchar("full_name", { length: 255 }).notNull(),
   headline: varchar("headline", { length: 255 }),
   location: varchar("location", { length: 255 }),
+  // Бажана сфера роботи. Nullable — кандидат може не вказувати; тоді
+  // рекомендації йдуть по всіх категоріях (тільки за embedding-схожістю).
+  preferredCategory: jobCategoryEnum("preferred_category"),
   experienceYears: integer("experience_years"),
   skills: jsonb("skills").$type<string[]>().default([]),
   resumeUrl: text("resume_url"),
@@ -123,6 +140,7 @@ export const jobs = pgTable("jobs", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
   location: varchar("location", { length: 255 }),
+  category: jobCategoryEnum("category").notNull().default("other"),
   employmentType: employmentTypeEnum("employment_type").notNull(),
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),

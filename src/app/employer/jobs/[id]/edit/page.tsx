@@ -36,6 +36,7 @@ export default async function EditJobPage({
         title: job.title,
         description: job.description,
         location: job.location ?? "",
+        category: job.category,
         employmentType: job.employmentType,
         salaryMin: job.salaryMin?.toString() ?? "",
         salaryMax: job.salaryMax?.toString() ?? "",

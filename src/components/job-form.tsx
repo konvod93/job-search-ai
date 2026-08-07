@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EMPLOYMENT_TYPES } from "@/lib/job-options";
+import { EMPLOYMENT_TYPES, JOB_CATEGORIES } from "@/lib/job-options";
 
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]["value"];
+type Category = (typeof JOB_CATEGORIES)[number]["value"];
 type Status = "draft" | "published" | "closed";
 
 export type JobFormValues = {
   title: string;
   description: string;
   location: string;
+  category: Category;
   employmentType: EmploymentType;
   salaryMin: string;
   salaryMax: string;
@@ -22,6 +24,7 @@ const EMPTY_VALUES: JobFormValues = {
   title: "",
   description: "",
   location: "",
+  category: "other",
   employmentType: "full_time",
   salaryMin: "",
   salaryMax: "",
@@ -45,6 +48,9 @@ export default function JobForm({
   );
   const [location, setLocation] = useState(
     initialValues?.location ?? EMPTY_VALUES.location,
+  );
+  const [category, setCategory] = useState<Category>(
+    initialValues?.category ?? EMPTY_VALUES.category,
   );
   const [employmentType, setEmploymentType] = useState<EmploymentType>(
     initialValues?.employmentType ?? EMPTY_VALUES.employmentType,
@@ -81,6 +87,7 @@ export default function JobForm({
         title,
         description,
         location: location || undefined,
+        category,
         employmentType,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
@@ -151,6 +158,24 @@ export default function JobForm({
             placeholder="Київ / Віддалено"
             className="rounded border border-neutral-300 px-3 py-2"
           />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="category" className="text-sm text-neutral-600">
+            Категорія
+          </label>
+          <select
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value as Category)}
+            className="rounded border border-neutral-300 px-3 py-2"
+          >
+            {JOB_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-col gap-1">

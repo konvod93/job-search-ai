@@ -7,10 +7,25 @@ import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 
+const CATEGORY_VALUES = [
+  "it",
+  "construction",
+  "manufacturing",
+  "trade",
+  "drivers",
+  "agriculture",
+  "government",
+  "accounting",
+  "education",
+  "military",
+  "other",
+] as const;
+
 const createJobSchema = z.object({
   title: z.string().min(1, "Вкажіть назву вакансії"),
   description: z.string().min(1, "Вкажіть опис вакансії"),
   location: z.string().optional(),
+  category: z.enum(CATEGORY_VALUES),
   employmentType: z.enum([
     "full_time",
     "part_time",
@@ -24,13 +39,14 @@ const createJobSchema = z.object({
   status: z.enum(["draft", "published"]).default("draft"),
 });
 
-// GET /api/jobs?q=...&location=...&employmentType=...
+// GET /api/jobs?q=...&location=...&employmentType=...&category=...
 // Публічний перегляд — тільки опубліковані вакансії
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q");
   const location = searchParams.get("location");
   const employmentType = searchParams.get("employmentType");
+  const category = searchParams.get("category");
 
   const filters = [eq(jobs.status, "published")];
 
@@ -63,6 +79,9 @@ export async function GET(request: Request) {
           | "remote",
       ),
     );
+  }
+  if (category && (CATEGORY_VALUES as readonly string[]).includes(category)) {
+    filters.push(eq(jobs.category, category as (typeof CATEGORY_VALUES)[number]));
   }
 
   const results = await db
@@ -134,6 +153,7 @@ export async function POST(request: Request) {
       title: parsed.data.title,
       description: parsed.data.description,
       location: parsed.data.location,
+      category: parsed.data.category,
       employmentType: parsed.data.employmentType,
       salaryMin: parsed.data.salaryMin,
       salaryMax: parsed.data.salaryMax,

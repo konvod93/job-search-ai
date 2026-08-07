@@ -50,6 +50,13 @@
       "when": 1785835375484,
       "tag": "0006_bored_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786090498897,
+      "tag": "0007_many_jean_grey",
+      "breakpoints": true
     }
   ]
 }

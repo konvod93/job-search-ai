@@ -6,10 +6,25 @@ import { db } from "@/db";
 import { candidateProfiles } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 
+const CATEGORY_VALUES = [
+  "it",
+  "construction",
+  "manufacturing",
+  "trade",
+  "drivers",
+  "agriculture",
+  "government",
+  "accounting",
+  "education",
+  "military",
+  "other",
+] as const;
+
 const updateProfileSchema = z.object({
   fullName: z.string().min(1).optional(),
   headline: z.string().optional(),
   location: z.string().optional(),
+  preferredCategory: z.enum(CATEGORY_VALUES).nullable().optional(),
   experienceYears: z.number().int().nonnegative().optional(),
   skills: z.array(z.string()).optional(),
   resumeText: z.string().optional(),

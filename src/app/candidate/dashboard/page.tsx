@@ -8,6 +8,7 @@ import {
   jobs,
 } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
+import { JOB_CATEGORY_LABELS } from "@/lib/job-options";
 
 const STATUS_LABELS: Record<string, string> = {
   applied: "Відправлено",
@@ -25,6 +26,7 @@ export default async function CandidateDashboard() {
       id: candidateProfiles.id,
       fullName: candidateProfiles.fullName,
       embedding: candidateProfiles.embedding,
+      preferredCategory: candidateProfiles.preferredCategory,
     })
     .from(candidateProfiles)
     .where(eq(candidateProfiles.userId, session.user.id))
@@ -48,10 +50,14 @@ export default async function CandidateDashboard() {
   // Рекомендовані вакансії — за косинусною схожістю embedding профілю й
   // опису вакансії (pgvector). З'являються тільки якщо в профілі вже є
   // embedding (тобто кандидат зберігав резюме/скіли хоча б раз).
+  // Якщо кандидат вказав бажану категорію — фільтруємо по ній жорстко,
+  // інакше embedding-схожість сама по собі може підмішати нерелевантні
+  // сфери (наприклад, "муляр" у рекомендаціях frontend-розробнику).
   let recommendedJobs: {
     id: string;
     title: string;
     companyName: string;
+    category: string;
     similarity: number;
   }[] = [];
 
@@ -61,16 +67,22 @@ export default async function CandidateDashboard() {
       candidateProfile.embedding,
     )})`;
 
+    const matchFilters = [eq(jobs.status, "published"), isNotNull(jobs.embedding)];
+    if (candidateProfile.preferredCategory) {
+      matchFilters.push(eq(jobs.category, candidateProfile.preferredCategory));
+    }
+
     recommendedJobs = await db
       .select({
         id: jobs.id,
         title: jobs.title,
         companyName: employerProfiles.companyName,
+        category: jobs.category,
         similarity,
       })
       .from(jobs)
       .innerJoin(employerProfiles, eq(jobs.employerId, employerProfiles.id))
-      .where(and(eq(jobs.status, "published"), isNotNull(jobs.embedding)))
+      .where(and(...matchFilters))
       .orderBy(desc(similarity))
       .limit(5);
   }
@@ -99,6 +111,16 @@ export default async function CandidateDashboard() {
             <p className="text-sm text-neutral-500">
               Підібрано AI за схожістю вашого профілю з описом вакансій
             </p>
+            {!candidateProfile.preferredCategory && (
+              <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Ви не вказали бажану сферу роботи в{" "}
+                <Link href="/candidate/profile" className="underline">
+                  профілі
+                </Link>{" "}
+                — рекомендації йдуть по всіх категоріях і можуть бути менш
+                точними.
+              </p>
+            )}
             {recommendedJobs.map((job) => (
               <Link
                 key={job.id}
@@ -108,7 +130,7 @@ export default async function CandidateDashboard() {
                 <div>
                   <p className="font-medium">{job.title}</p>
                   <p className="text-sm text-neutral-500">
-                    {job.companyName}
+                    {job.companyName} · {JOB_CATEGORY_LABELS[job.category]}
                   </p>
                 </div>
                 <span className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">

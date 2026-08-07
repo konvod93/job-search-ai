@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/schema";
-import { EMPLOYMENT_TYPE_LABELS } from "@/lib/job-options";
+import { EMPLOYMENT_TYPE_LABELS, JOB_CATEGORY_LABELS } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
 import ReportJobButton from "@/components/report-job-button";
 
@@ -100,6 +100,9 @@ export default async function JobDetailPage({
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm text-neutral-600">
+        <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+          {JOB_CATEGORY_LABELS[job.category]}
+        </span>
         <span className="rounded-full bg-neutral-100 px-3 py-1">
           {EMPLOYMENT_TYPE_LABELS[job.employmentType]}
         </span>
