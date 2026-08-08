@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
+import { checkTrustGate } from "@/lib/trust-gate";
 
 const CATEGORY_VALUES = [
   "it",
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
     .select({
       id: employerProfiles.id,
       verificationStatus: employerProfiles.verificationStatus,
+      employerType: employerProfiles.employerType,
     })
     .from(employerProfiles)
     .where(eq(employerProfiles.userId, session.user.id))
@@ -170,11 +172,49 @@ export async function POST(request: Request) {
     const moderation = await moderateJobListing(
       parsed.data.title,
       parsed.data.description,
+      { min: parsed.data.salaryMin, max: parsed.data.salaryMax },
     );
     if (moderation?.flagged) {
       status = "pending_review";
       moderationReason = moderation.reason;
       moderationCategory = moderation.category;
+    }
+
+    // Trust-gate: додаткові жорсткі обмеження для роботодавців з низьким
+    // рівнем довіри (ФОП незалежно від верифікації, або будь-хто
+    // неверифікований). На відміну від moderateJobListing вище, це не
+    // "відправити на розгляд", а прямий блок публікації з чіткою причиною.
+    const isLowTrust =
+      employerProfile.employerType === "fop" ||
+      employerProfile.verificationStatus !== "verified";
+
+    if (isLowTrust) {
+      const trustGate = await checkTrustGate(
+        parsed.data.title,
+        parsed.data.description,
+      );
+
+      if (trustGate?.hasExternalContact) {
+        return NextResponse.json(
+          {
+            error: `Для ФОП та неверифікованих роботодавців заборонено вказувати в тексті вакансії посилання на сторонні канали зв'язку (Telegram, Viber тощо). Знайдено: "${trustGate.externalContactPhrase}". Приберіть це і спробуйте ще раз, або пройдіть верифікацію.`,
+          },
+          { status: 403 },
+        );
+      }
+
+      if (
+        trustGate?.isWomenEntertainmentRole &&
+        employerProfile.verificationStatus !== "verified"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій моделі/танцівниці/співачки/акторки та подібних ролей вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
     }
   }
 
