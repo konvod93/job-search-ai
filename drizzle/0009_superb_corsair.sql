@@ -1,0 +1,2 @@
+CREATE TYPE "public"."moderation_category" AS ENUM('mlm', 'scam', 'spam', 'exploitation_risk', 'other');--> statement-breakpoint
+ALTER TABLE "jobs" ADD COLUMN "moderation_category" "moderation_category";

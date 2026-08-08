@@ -51,6 +51,14 @@ export const jobCategoryEnum = pgEnum("job_category", [
   "other",
 ]);
 
+export const moderationCategoryEnum = pgEnum("moderation_category", [
+  "mlm",
+  "scam",
+  "spam",
+  "exploitation_risk",
+  "other",
+]);
+
 export const applicationStatusEnum = pgEnum("application_status", [
   "applied",
   "viewed",
@@ -164,6 +172,10 @@ export const jobs = pgTable("jobs", {
   // Причина, з якою AI-модерація відправила вакансію на pending_review
   // (наприклад, "схоже на МЛМ"). null — модерацію пройдено або ще не було.
   moderationReason: text("moderation_reason"),
+  // Категорія проблеми — окрема від reason, щоб адмінка могла показувати
+  // exploitation_risk (можлива торгівля людьми/секс-експлуатація) з
+  // підвищеною терміновістю/іншим візуальним стилем, а не як звичайний спам.
+  moderationCategory: moderationCategoryEnum("moderation_category"),
   embedding: vector("embedding", { dimensions: 1536 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

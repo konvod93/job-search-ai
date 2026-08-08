@@ -158,6 +158,13 @@ export async function POST(request: Request) {
   // тимчасова недоступність AI не блокувала легітимних роботодавців.
   let status: "draft" | "published" | "pending_review" = parsed.data.status;
   let moderationReason: string | null = null;
+  let moderationCategory:
+    | "mlm"
+    | "scam"
+    | "spam"
+    | "exploitation_risk"
+    | "other"
+    | null = null;
 
   if (status === "published") {
     const moderation = await moderateJobListing(
@@ -167,6 +174,7 @@ export async function POST(request: Request) {
     if (moderation?.flagged) {
       status = "pending_review";
       moderationReason = moderation.reason;
+      moderationCategory = moderation.category;
     }
   }
 
@@ -184,6 +192,7 @@ export async function POST(request: Request) {
       skillsRequired: parsed.data.skillsRequired ?? [],
       status,
       moderationReason,
+      moderationCategory,
     })
     .returning();
 

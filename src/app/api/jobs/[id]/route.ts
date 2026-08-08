@@ -111,6 +111,13 @@ export async function PATCH(
     skillsRequired?: string[];
     status?: "draft" | "published" | "closed" | "pending_review";
     moderationReason?: string | null;
+    moderationCategory?:
+      | "mlm"
+      | "scam"
+      | "spam"
+      | "exploitation_risk"
+      | "other"
+      | null;
   } = { ...parsed.data };
 
   if (targetStatus === "published") {
@@ -122,9 +129,11 @@ export async function PATCH(
     if (moderation?.flagged) {
       updates.status = "pending_review";
       updates.moderationReason = moderation.reason;
+      updates.moderationCategory = moderation.category;
     } else if (moderation) {
       // Пройшло перевірку — прибираємо стару причину флагу, якщо була
       updates.moderationReason = null;
+      updates.moderationCategory = null;
     }
   }
 
