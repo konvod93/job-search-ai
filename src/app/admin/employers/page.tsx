@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { employerProfiles, users } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
 import { isGenericEmailDomain } from "@/lib/email-domain";
+import { EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
 import EmployerVerificationActions from "@/components/employer-verification-actions";
 
 export default async function AdminEmployersPage() {
@@ -54,6 +55,16 @@ export default async function AdminEmployersPage() {
               </div>
 
               <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-neutral-900 px-2 py-1 text-white">
+                  {employer.employerType
+                    ? EMPLOYER_TYPE_LABELS[employer.employerType]
+                    : "Тип не вказано"}
+                </span>
+                {employer.isFreeTier && (
+                  <span className="rounded-full bg-green-50 px-2 py-1 text-green-700">
+                    Безкоштовний тариф
+                  </span>
+                )}
                 <span
                   className={`rounded-full px-2 py-1 ${
                     generic
@@ -73,7 +84,7 @@ export default async function AdminEmployersPage() {
               </div>
 
               <p className="text-sm">
-                ЄДРПОУ/РНОКПП:{" "}
+                {employer.employerType === "fop" ? "ІПН/РНОКПП" : "ЄДРПОУ"}:{" "}
                 <a
                   href={`https://www.google.com/search?q=%D0%84%D0%94%D0%A0%D0%9F%D0%9E%D0%A3+${employer.edrpou}`}
                   target="_blank"

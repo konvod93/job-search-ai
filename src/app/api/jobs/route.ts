@@ -116,7 +116,10 @@ export async function POST(request: Request) {
   }
 
   const [employerProfile] = await db
-    .select({ id: employerProfiles.id })
+    .select({
+      id: employerProfiles.id,
+      verificationStatus: employerProfiles.verificationStatus,
+    })
     .from(employerProfiles)
     .where(eq(employerProfiles.userId, session.user.id))
     .limit(1);
@@ -126,6 +129,27 @@ export async function POST(request: Request) {
       { error: "Профіль роботодавця не знайдено" },
       { status: 404 },
     );
+  }
+
+  // Неверифіковані employer'и можуть мати лише одну вакансію — це
+  // антифрод-обмеження, щоб шахрайський акаунт не міг залити платформу
+  // спамом до того, як адмін встигне його перевірити.
+  if (employerProfile.verificationStatus !== "verified") {
+    const existingJobs = await db
+      .select({ id: jobs.id })
+      .from(jobs)
+      .where(eq(jobs.employerId, employerProfile.id))
+      .limit(1);
+
+    if (existingJobs.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Неверифіковані роботодавці можуть опублікувати лише одну вакансію. Пройдіть верифікацію (ЄДРПОУ/ІПН у профілі), щоб публікувати більше.",
+        },
+        { status: 403 },
+      );
+    }
   }
 
   // AI-модерація: перевіряємо тільки коли employer намагається одразу

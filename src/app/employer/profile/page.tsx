@@ -42,6 +42,7 @@ export default async function EmployerProfilePage() {
           location: profile.location ?? "",
           phone: profile.phone ?? "",
           phoneVisible: profile.phoneVisible,
+          employerType: profile.employerType ?? "",
           edrpou: profile.edrpou ?? "",
         }}
         verificationStatus={profile.verificationStatus}

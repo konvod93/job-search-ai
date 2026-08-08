@@ -66,10 +66,17 @@ export const reportStatusEnum = pgEnum("report_status", [
 ]);
 
 export const verificationStatusEnum = pgEnum("verification_status", [
-  "unverified", // ЄДРПОУ не подано
+  "unverified", // документ не подано, ліміт 1 вакансія
   "pending", // подано, чекає на перевірку адміном
   "verified",
   "rejected",
+]);
+
+export const employerTypeEnum = pgEnum("employer_type", [
+  "commercial", // комерційна юрособа: виробництво, будівництво, торгівля тощо
+  "noncommercial", // некомерційна/бюджетна юрособа: держоргани, освіта, медицина, бібліотеки
+  "military_security", // ЗСУ, МВС, ДСНС та інші органи сектору безпеки
+  "fop", // ФОП — верифікується по ІПН/РНОКПП, а не ЄДРПОУ
 ]);
 
 // ---------- Tables ----------
@@ -119,15 +126,23 @@ export const employerProfiles = pgTable("employer_profiles", {
   // Телефон видно кандидатам на сторінці вакансії, тільки якщо employer сам
   // це дозволив — за замовчуванням прихований.
   phoneVisible: boolean("phone_visible").notNull().default(false),
-  // ЄДРПОУ (юрособи) або РНОКПП (ФОП/фізособи). Необов'язкове поле — без
+  // ЄДРПОУ (юрособи) або ІПН/РНОКПП (ФОП). Необов'язкове поле — без
   // нього employer все одно може публікувати вакансії, просто без бейджа
   // "Перевірено" (див. verificationStatus).
   edrpou: varchar("edrpou", { length: 20 }),
+  // Тип роботодавця — визначає, який документ звіряти і чи платна публікація
+  // (див. isFreeTier). Nullable — employer вказує при подачі на верифікацію.
+  employerType: employerTypeEnum("employer_type"),
   verificationStatus: verificationStatusEnum("verification_status")
     .notNull()
     .default("unverified"),
   // Коментар адміна — причина відмови у верифікації або службова нотатка.
   verificationNote: text("verification_note"),
+  // Заготовка під майбутній біллінг: бюджетні/некомерційні організації та
+  // сектор безпеки публікують безкоштовно. Білінгу в проекті ще немає —
+  // зараз усі публікують безкоштовно незалежно від цього прапорця, поле
+  // просто фіксує намір на майбутнє.
+  isFreeTier: boolean("is_free_tier").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

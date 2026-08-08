@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { EMPLOYER_TYPES, registrationNumberLabel } from "@/lib/job-options";
 
 type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
+type EmployerType = (typeof EMPLOYER_TYPES)[number]["value"];
 
 const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
-  unverified: "Не подано на верифікацію",
+  unverified: "Не подано на верифікацію (ліміт: 1 активна вакансія)",
   pending: "На розгляді в адміна",
   verified: "Перевірено ✓",
   rejected: "Відхилено",
@@ -24,6 +26,7 @@ export default function EmployerProfileForm({
     location: string;
     phone: string;
     phoneVisible: boolean;
+    employerType: EmployerType | "";
     edrpou: string;
   };
   verificationStatus: VerificationStatus;
@@ -39,6 +42,9 @@ export default function EmployerProfileForm({
   const [phone, setPhone] = useState(initialValues.phone);
   const [phoneVisible, setPhoneVisible] = useState(
     initialValues.phoneVisible,
+  );
+  const [employerType, setEmployerType] = useState<EmployerType | "">(
+    initialValues.employerType,
   );
   const [edrpou, setEdrpou] = useState(initialValues.edrpou);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +67,7 @@ export default function EmployerProfileForm({
         location,
         phone,
         phoneVisible,
+        employerType: employerType || undefined,
         edrpou,
       }),
     });
@@ -81,7 +88,7 @@ export default function EmployerProfileForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor="companyName" className="text-sm text-neutral-600">
-          Назва компанії
+          Назва компанії / установи
         </label>
         <input
           id="companyName"
@@ -97,14 +104,14 @@ export default function EmployerProfileForm({
           htmlFor="companyDescription"
           className="text-sm text-neutral-600"
         >
-          Опис компанії
+          Опис
         </label>
         <textarea
           id="companyDescription"
           rows={5}
           value={companyDescription}
           onChange={(e) => setCompanyDescription(e.target.value)}
-          placeholder="Чим займається компанія, культура, переваги для співробітників..."
+          placeholder="Чим займається організація, культура, переваги для співробітників..."
           className="rounded border border-neutral-300 px-3 py-2"
         />
       </div>
@@ -158,9 +165,28 @@ export default function EmployerProfileForm({
         </label>
       </div>
 
-      <div className="flex flex-col gap-1 rounded border border-neutral-200 p-3">
-        <label htmlFor="edrpou" className="text-sm text-neutral-600">
-          ЄДРПОУ / РНОКПП (необов&apos;язково)
+      <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
+        <label htmlFor="employerType" className="text-sm text-neutral-600">
+          Тип роботодавця
+        </label>
+        <select
+          id="employerType"
+          value={employerType}
+          onChange={(e) =>
+            setEmployerType(e.target.value as EmployerType | "")
+          }
+          className="rounded border border-neutral-300 px-3 py-2"
+        >
+          <option value="">Оберіть тип...</option>
+          {EMPLOYER_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="edrpou" className="mt-2 text-sm text-neutral-600">
+          {registrationNumberLabel(employerType || null)} (необов&apos;язково)
         </label>
         <input
           id="edrpou"
@@ -170,9 +196,10 @@ export default function EmployerProfileForm({
           className="rounded border border-neutral-300 px-3 py-2"
         />
         <p className="text-xs text-neutral-500">
-          Якщо вкажете — подамо на перевірку адміну, після схвалення на
-          профілі з&apos;явиться бейдж &quot;Перевірено&quot;. Без ЄДРПОУ
-          публікувати вакансії теж можна, просто без бейджа.
+          Оберіть тип і вкажіть номер — подамо на перевірку адміну, після
+          схвалення на профілі з&apos;явиться бейдж &quot;Перевірено&quot; і
+          зніметься ліміт на 1 вакансію. Без верифікації публікувати теж
+          можна, але лише одну вакансію.
         </p>
         <p
           className={`text-sm font-medium ${

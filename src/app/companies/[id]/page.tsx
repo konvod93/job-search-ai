@@ -3,7 +3,7 @@ import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
-import { EMPLOYMENT_TYPE_LABELS } from "@/lib/job-options";
+import { EMPLOYMENT_TYPE_LABELS, EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
 
 export default async function CompanyProfilePage({
   params,
@@ -36,6 +36,11 @@ export default async function CompanyProfilePage({
           {company.verificationStatus === "verified" && (
             <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
               ✓ Перевірена компанія
+            </span>
+          )}
+          {company.employerType && (
+            <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs text-neutral-600">
+              {EMPLOYER_TYPE_LABELS[company.employerType]}
             </span>
           )}
         </div>

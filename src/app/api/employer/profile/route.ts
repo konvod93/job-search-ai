@@ -4,28 +4,45 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles } from "@/db/schema";
+import { FREE_TIER_EMPLOYER_TYPES } from "@/lib/job-options";
 
-const updateSchema = z.object({
-  companyName: z.string().min(1).optional(),
-  companyDescription: z.string().optional(),
-  website: z
-    .string()
-    .refine(
-      (val) => val === "" || z.url().safeParse(val).success,
-      "Некоректний URL",
-    )
-    .optional(),
-  location: z.string().optional(),
-  phone: z.string().optional(),
-  phoneVisible: z.boolean().optional(),
-  edrpou: z
-    .string()
-    .refine(
-      (val) => val === "" || /^\d{8,10}$/.test(val),
-      "ЄДРПОУ/РНОКПП — 8-10 цифр",
-    )
-    .optional(),
-});
+const EMPLOYER_TYPE_VALUES = [
+  "commercial",
+  "noncommercial",
+  "military_security",
+  "fop",
+] as const;
+
+const updateSchema = z
+  .object({
+    companyName: z.string().min(1).optional(),
+    companyDescription: z.string().optional(),
+    website: z
+      .string()
+      .refine(
+        (val) => val === "" || z.url().safeParse(val).success,
+        "Некоректний URL",
+      )
+      .optional(),
+    location: z.string().optional(),
+    phone: z.string().optional(),
+    phoneVisible: z.boolean().optional(),
+    employerType: z.enum(EMPLOYER_TYPE_VALUES).optional(),
+    edrpou: z
+      .string()
+      .refine(
+        (val) => val === "" || /^\d{8,10}$/.test(val),
+        "ЄДРПОУ/ІПН — 8-10 цифр",
+      )
+      .optional(),
+  })
+  .refine(
+    (data) => !(data.edrpou && data.edrpou !== "" && !data.employerType),
+    {
+      message: "Оберіть тип роботодавця перед подачею номера",
+      path: ["employerType"],
+    },
+  );
 
 export async function GET() {
   const session = await auth();
@@ -67,6 +84,7 @@ export async function PATCH(request: Request) {
   const [existing] = await db
     .select({
       edrpou: employerProfiles.edrpou,
+      employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
     })
     .from(employerProfiles)
@@ -77,8 +95,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Профіль не знайдено" }, { status: 404 });
   }
 
-  // Якщо employer вписав/змінив ЄДРПОУ — автоматично подаємо на розгляд
-  // адміну. Якщо очистив поле — знімаємо верифікацію.
+  // Якщо employer вписав/змінив реєстраційний номер — автоматично подаємо
+  // на розгляд адміну. Якщо очистив поле — знімаємо верифікацію.
   let verificationStatus = existing.verificationStatus;
   if (parsed.data.edrpou !== undefined) {
     const newEdrpou = parsed.data.edrpou.trim();
@@ -89,9 +107,14 @@ export async function PATCH(request: Request) {
     }
   }
 
+  const effectiveType = parsed.data.employerType ?? existing.employerType;
+  const isFreeTier = effectiveType
+    ? FREE_TIER_EMPLOYER_TYPES.has(effectiveType)
+    : false;
+
   const [updated] = await db
     .update(employerProfiles)
-    .set({ ...parsed.data, verificationStatus, updatedAt: new Date() })
+    .set({ ...parsed.data, verificationStatus, isFreeTier, updatedAt: new Date() })
     .where(eq(employerProfiles.userId, session.user.id))
     .returning();
 

@@ -25,3 +25,27 @@ export const JOB_CATEGORIES = [
 
 export const JOB_CATEGORY_LABELS: Record<string, string> =
   Object.fromEntries(JOB_CATEGORIES.map((c) => [c.value, c.label]));
+
+export const EMPLOYER_TYPES = [
+  { value: "commercial", label: "Комерційна юрособа" },
+  { value: "noncommercial", label: "Некомерційна / бюджетна установа" },
+  { value: "military_security", label: "ЗСУ / МВС / ДСНС" },
+  { value: "fop", label: "ФОП" },
+] as const;
+
+export const EMPLOYER_TYPE_LABELS: Record<string, string> =
+  Object.fromEntries(EMPLOYER_TYPES.map((t) => [t.value, t.label]));
+
+// Некомерційні/бюджетні організації та сектор безпеки — безкоштовна
+// публікація (заготовка під майбутній біллінг, зараз усе безкоштовне).
+export const FREE_TIER_EMPLOYER_TYPES = new Set([
+  "noncommercial",
+  "military_security",
+]);
+
+// Юрособи звіряються по ЄДРПОУ, ФОП — по ІПН/РНОКПП.
+export function registrationNumberLabel(
+  employerType: string | null | undefined,
+): string {
+  return employerType === "fop" ? "ІПН / РНОКПП" : "ЄДРПОУ";
+}
