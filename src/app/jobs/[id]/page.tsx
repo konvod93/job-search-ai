@@ -7,6 +7,7 @@ import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/sc
 import { EMPLOYMENT_TYPE_LABELS, JOB_CATEGORY_LABELS } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
 import ReportJobButton from "@/components/report-job-button";
+import SafetyTip from "@/components/safety-tip";
 
 export default async function JobDetailPage({
   params,
@@ -134,6 +135,8 @@ export default async function JobDetailPage({
       <p className="whitespace-pre-wrap text-neutral-800">
         {job.description}
       </p>
+
+      <SafetyTip />
 
       <div className="mt-2 border-t border-neutral-200 pt-4">{applyBlock}</div>
 
