@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
+import { detectBaitPattern } from "@/lib/bait-heuristic";
 import ModerationActions from "@/components/moderation-actions";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -20,11 +21,26 @@ export default async function AdminJobsPage() {
     .select({
       job: jobs,
       companyName: employerProfiles.companyName,
+      employerId: employerProfiles.id,
     })
     .from(jobs)
     .innerJoin(employerProfiles, eq(jobs.employerId, employerProfiles.id))
     .where(eq(jobs.status, "pending_review"))
     .orderBy(jobs.createdAt);
+
+  // Bait-and-switch евристика: для кожного унікального employer'а серед
+  // вакансій на модерації рахуємо, чи є в нього "пачка" простих
+  // вакансій-приманок одночасно (сигнал для ручної перевірки, не автоблок).
+  const uniqueEmployerIds = [
+    ...new Set(pendingJobsRaw.map((r) => r.employerId)),
+  ];
+  const baitPatternByEmployer = new Map(
+    await Promise.all(
+      uniqueEmployerIds.map(
+        async (id) => [id, await detectBaitPattern(id)] as const,
+      ),
+    ),
+  );
 
   // Найтерміновіше — можлива торгівля людьми/експлуатація — завжди зверху.
   const pendingJobs = [...pendingJobsRaw].sort((a, b) => {
@@ -66,9 +82,11 @@ export default async function AdminJobsPage() {
       )}
 
       <div className="flex flex-col gap-3">
-        {pendingJobs.map(({ job, companyName }) => {
+        {pendingJobs.map(({ job, companyName, employerId }) => {
           const isExploitationRisk =
             job.moderationCategory === "exploitation_risk";
+          const baitPattern = baitPatternByEmployer.get(employerId);
+          const showBaitWarning = (baitPattern?.count ?? 0) >= 3;
           return (
             <div
               key={job.id}
@@ -95,6 +113,16 @@ export default async function AdminJobsPage() {
                 >
                   {CATEGORY_LABELS[job.moderationCategory]}
                 </span>
+              )}
+              {showBaitWarning && (
+                <p className="text-xs text-orange-800">
+                  🔎 У цього роботодавця одночасно {baitPattern!.count}{" "}
+                  &quot;простих&quot; вакансій-приманок ({baitPattern!.titles.join(", ")})
+                  — типовий почерк bait-and-switch схем (людину заманюють на
+                  просту роботу, а на місці підміняють на консультанта з
+                  оплатою від продажів). Перевірте, чи це справді великий
+                  хаб/логістична компанія, перш ніж схвалювати.
+                </p>
               )}
               {job.moderationReason && (
                 <p

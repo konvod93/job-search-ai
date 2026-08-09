@@ -5,6 +5,7 @@ import { employerProfiles, users } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
 import { isGenericEmailDomain } from "@/lib/email-domain";
 import { EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
+import { detectBaitPattern } from "@/lib/bait-heuristic";
 import EmployerVerificationActions from "@/components/employer-verification-actions";
 
 export default async function AdminEmployersPage() {
@@ -19,6 +20,15 @@ export default async function AdminEmployersPage() {
     .innerJoin(users, eq(employerProfiles.userId, users.id))
     .where(eq(employerProfiles.verificationStatus, "pending"))
     .orderBy(employerProfiles.createdAt);
+
+  const baitPatterns = new Map(
+    await Promise.all(
+      pending.map(
+        async ({ employer }) =>
+          [employer.id, await detectBaitPattern(employer.id)] as const,
+      ),
+    ),
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
@@ -98,6 +108,17 @@ export default async function AdminEmployersPage() {
               {employer.companyDescription && (
                 <p className="text-sm text-neutral-600">
                   {employer.companyDescription}
+                </p>
+              )}
+
+              {(baitPatterns.get(employer.id)?.count ?? 0) >= 3 && (
+                <p className="text-xs text-orange-800">
+                  🔎 Одночасно {baitPatterns.get(employer.id)!.count}{" "}
+                  &quot;простих&quot; вакансій-приманок (
+                  {baitPatterns.get(employer.id)!.titles.join(", ")}) —
+                  типовий почерк bait-and-switch схем. Перевірте, чи це
+                  справді великий хаб/логістична компанія, перш ніж
+                  верифікувати.
                 </p>
               )}
             </div>
