@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
-import { detectBaitPattern } from "@/lib/bait-heuristic";
+import { detectBaitPattern, detectAllBaitPatterns } from "@/lib/bait-heuristic";
 import ModerationActions from "@/components/moderation-actions";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -42,6 +42,11 @@ export default async function AdminJobsPage() {
     ),
   );
 
+  // Сайт-вайд: ловить і employer'ів, чиї вакансії вже published (тобто
+  // взагалі не потрапляють у список pendingJobs нижче — типово для вже
+  // верифікованих employer'ів).
+  const siteWideBaitPatterns = await detectAllBaitPatterns();
+
   // Найтерміновіше — можлива торгівля людьми/експлуатація — завжди зверху.
   const pendingJobs = [...pendingJobsRaw].sort((a, b) => {
     const aUrgent = a.job.moderationCategory === "exploitation_risk" ? 0 : 1;
@@ -66,6 +71,20 @@ export default async function AdminJobsPage() {
           </Link>
         </div>
       </div>
+
+      {siteWideBaitPatterns.length > 0 && (
+        <div className="flex flex-col gap-2 rounded border border-orange-300 bg-orange-50 p-3">
+          <p className="text-sm font-medium text-orange-900">
+            🔎 Можливий bait-and-switch патерн (не автоблок — перевірте вручну)
+          </p>
+          {siteWideBaitPatterns.map((p) => (
+            <p key={p.employerId} className="text-xs text-orange-800">
+              <strong>{p.companyName}</strong> — {p.count} вакансій-приманок:{" "}
+              {p.titles.join(", ")}
+            </p>
+          ))}
+        </div>
+      )}
 
       {hasExploitationRisk && (
         <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-800">
