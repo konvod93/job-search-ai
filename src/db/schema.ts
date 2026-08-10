@@ -55,6 +55,7 @@ export const jobCategoryEnum = pgEnum("job_category", [
   "culture",
   "administrative-economic",
   "services",
+  "housing-communal",
   "government",
   "accounting",
   "education",
