@@ -25,6 +25,8 @@ export const JOB_CATEGORIES = [
   { value: "science", label: "Наука" },
   { value: "show-business", label: "Шоу-бізнес" },
   { value: "culture", label: "Культура" },
+  { value: "administrative-economic", label: "Адміністративно-господарська діяльність" },
+  { value: "services", label: "Обслуговуючий персонал" },
   { value: "government", label: "Державні органи та служби" },
   { value: "accounting", label: "Бухгалтерія та фінанси" },
   { value: "education", label: "Освіта" },
