@@ -16,6 +16,7 @@ export const JOB_CATEGORIES = [
   { value: "trade", label: "Торгівля" },
   { value: "drivers", label: "Водії" },
   { value: "agriculture", label: "Сільське господарство" },
+  { value: "juridical", label: "Юридичні професії" },
   { value: "government", label: "Державні органи та служби" },
   { value: "accounting", label: "Бухгалтерія та фінанси" },
   { value: "education", label: "Освіта" },

@@ -44,6 +44,7 @@ export const jobCategoryEnum = pgEnum("job_category", [
   "trade",
   "drivers",
   "agriculture",
+  "juridical",
   "government",
   "accounting",
   "education",
