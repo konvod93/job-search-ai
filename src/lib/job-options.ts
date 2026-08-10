@@ -18,6 +18,7 @@ export const JOB_CATEGORIES = [
   { value: "agriculture", label: "Сільське господарство" },
   { value: "juridical", label: "Юридичні професії" },
   { value: "healthcare", label: "Медичні працівники" },
+  { value: "hospitality", label: "Готельно-ресторанний сектор" },
   { value: "government", label: "Державні органи та служби" },
   { value: "accounting", label: "Бухгалтерія та фінанси" },
   { value: "education", label: "Освіта" },
