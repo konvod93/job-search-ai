@@ -7,6 +7,7 @@ import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
+import { checkBundledRoles } from "@/lib/bundled-roles-check";
 
 const CATEGORY_VALUES = [
   "it",
@@ -169,6 +170,23 @@ export async function POST(request: Request) {
     | null = null;
 
   if (status === "published") {
+    // Пакетування непов'язаних посад в одному оголошенні — універсальна
+    // перевірка, для ВСІХ employer'ів (не тільки low-trust), бо легітимних
+    // причин так робити практично немає. Жорсткий блок, не "на розгляд".
+    const bundledRoles = await checkBundledRoles(
+      parsed.data.title,
+      parsed.data.description,
+    );
+
+    if (bundledRoles?.hasBundledRoles) {
+      return NextResponse.json(
+        {
+          error: `Одне оголошення повинно описувати одну посаду. Знайдено кілька різних ролей: ${bundledRoles.rolesFound}. Створіть окреме оголошення для кожної посади.`,
+        },
+        { status: 403 },
+      );
+    }
+
     const moderation = await moderateJobListing(
       parsed.data.title,
       parsed.data.description,
