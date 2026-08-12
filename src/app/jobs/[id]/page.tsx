@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/schema";
 import { EMPLOYMENT_TYPE_LABELS, JOB_CATEGORY_LABELS } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
-import ReportJobButton from "@/components/report-job-button";
+import ReportButton from "@/components/report-button";
 import SafetyTip from "@/components/safety-tip";
 
 export default async function JobDetailPage({
@@ -142,7 +142,10 @@ export default async function JobDetailPage({
 
       {session?.user && (
         <div className="border-t border-neutral-200 pt-4">
-          <ReportJobButton jobId={job.id} />
+          <ReportButton
+            target={{ jobId: job.id }}
+            label="Поскаржитись на вакансію"
+          />
         </div>
       )}
     </main>

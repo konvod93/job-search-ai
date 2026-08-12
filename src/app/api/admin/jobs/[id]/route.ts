@@ -37,6 +37,8 @@ export async function PATCH(
     status: "published" | "closed";
     updatedAt: Date;
     moderationReason?: null;
+    moderationCategory?: null;
+    rejectedByAdmin?: boolean;
   } = {
     status: parsed.data.action === "approve" ? "published" : "closed",
     updatedAt: new Date(),
@@ -44,6 +46,11 @@ export async function PATCH(
 
   if (parsed.data.action === "approve") {
     setValues.moderationReason = null;
+    setValues.moderationCategory = null;
+  } else {
+    // Відхилено адміном (не сам employer закрив, не прийнята скарга) —
+    // рахується окремо для /admin/bans (3+ відхилень = кандидат на бан).
+    setValues.rejectedByAdmin = true;
   }
 
   const [updated] = await db

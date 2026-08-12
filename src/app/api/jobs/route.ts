@@ -122,6 +122,7 @@ export async function POST(request: Request) {
       id: employerProfiles.id,
       verificationStatus: employerProfiles.verificationStatus,
       employerType: employerProfiles.employerType,
+      banned: employerProfiles.banned,
     })
     .from(employerProfiles)
     .where(eq(employerProfiles.userId, session.user.id))
@@ -131,6 +132,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Профіль роботодавця не знайдено" },
       { status: 404 },
+    );
+  }
+
+  if (employerProfile.banned) {
+    return NextResponse.json(
+      {
+        error:
+          "Ваш акаунт заблоковано за порушення правил платформи. Зверніться до підтримки, якщо вважаєте це помилкою.",
+      },
+      { status: 403 },
     );
   }
 

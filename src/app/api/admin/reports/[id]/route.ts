@@ -48,9 +48,10 @@ export async function PATCH(
     .set({ status: parsed.data.action === "accept" ? "reviewed" : "dismissed" })
     .where(eq(reports.id, id));
 
-  // Скарга прийнята — знімаємо вакансію з публікації (employer зможе
-  // відредагувати й повторно подати на публікацію/модерацію).
-  if (parsed.data.action === "accept") {
+  // Скарга прийнята — якщо вона прив'язана до конкретної вакансії (яку ще
+  // не видалили), знімаємо цю вакансію з публікації. Загальні скарги на
+  // роботодавця (jobId=null) просто рахуються в статистику для /admin/bans.
+  if (parsed.data.action === "accept" && report.jobId) {
     await db
       .update(jobs)
       .set({ status: "closed", updatedAt: new Date() })

@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
+import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { EMPLOYMENT_TYPE_LABELS, EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
+import ReportButton from "@/components/report-button";
 
 export default async function CompanyProfilePage({
   params,
@@ -11,6 +13,7 @@ export default async function CompanyProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await auth();
 
   const [company] = await db
     .select()
@@ -97,6 +100,15 @@ export default async function CompanyProfilePage({
           </Link>
         ))}
       </div>
+
+      {session?.user && (
+        <div className="border-t border-neutral-200 pt-4">
+          <ReportButton
+            target={{ employerId: company.id }}
+            label="Поскаржитись на роботодавця"
+          />
+        </div>
+      )}
     </main>
   );
 }

@@ -44,6 +44,7 @@ async function getJobWithOwner(jobId: string) {
       employerUserId: employerProfiles.userId,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
+      banned: employerProfiles.banned,
     })
     .from(jobs)
     .innerJoin(employerProfiles, eq(jobs.employerId, employerProfiles.id))
@@ -86,6 +87,16 @@ export async function PATCH(
   if (row.employerUserId !== session.user.id) {
     return NextResponse.json(
       { error: "Немає прав на редагування цієї вакансії" },
+      { status: 403 },
+    );
+  }
+
+  if (row.banned) {
+    return NextResponse.json(
+      {
+        error:
+          "Ваш акаунт заблоковано за порушення правил платформи. Зверніться до підтримки, якщо вважаєте це помилкою.",
+      },
       { status: 403 },
     );
   }

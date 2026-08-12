@@ -16,7 +16,12 @@ export default async function EmployerDashboard() {
   const session = await requireRole("employer");
 
   const [employerProfile] = await db
-    .select({ id: employerProfiles.id, companyName: employerProfiles.companyName })
+    .select({
+      id: employerProfiles.id,
+      companyName: employerProfiles.companyName,
+      banned: employerProfiles.banned,
+      banReason: employerProfiles.banReason,
+    })
     .from(employerProfiles)
     .where(eq(employerProfiles.userId, session.user.id))
     .limit(1);
@@ -31,6 +36,21 @@ export default async function EmployerDashboard() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
+      {employerProfile?.banned && (
+        <div className="rounded border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-medium">
+            Ваш акаунт заблоковано за порушення правил платформи.
+          </p>
+          {employerProfile.banReason && (
+            <p className="mt-1">Причина: {employerProfile.banReason}</p>
+          )}
+          <p className="mt-1">
+            Публікація нових вакансій і редагування недоступні. Якщо
+            вважаєте це помилкою — зверніться до підтримки.
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">

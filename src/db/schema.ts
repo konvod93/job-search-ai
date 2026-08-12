@@ -151,6 +151,12 @@ export const employerProfiles = pgTable("employer_profiles", {
   // зараз усі публікують безкоштовно незалежно від цього прапорця, поле
   // просто фіксує намір на майбутнє.
   isFreeTier: boolean("is_free_tier").notNull().default(false),
+  // Бан адміном. При бані всі активні вакансії employer'а автоматично
+  // закриваються, публікація нових блокується. Не блокує сам логін —
+  // employer бачить банер з причиною на своєму дашборді.
+  banned: boolean("banned").notNull().default(false),
+  bannedAt: timestamp("banned_at"),
+  banReason: text("ban_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -176,6 +182,11 @@ export const jobs = pgTable("jobs", {
   // exploitation_risk (можлива торгівля людьми/секс-експлуатація) з
   // підвищеною терміновістю/іншим візуальним стилем, а не як звичайний спам.
   moderationCategory: moderationCategoryEnum("moderation_category"),
+  // true, якщо адмін вручну відхилив вакансію на /admin/jobs (кнопка
+  // "Відхилити"). Окремо від status='closed', бо closed буває й з інших
+  // причин (сам employer закрив, прийнята скарга). Використовується для
+  // підрахунку "кандидатів на бан" — 3+ відхилених вакансій.
+  rejectedByAdmin: boolean("rejected_by_admin").notNull().default(false),
   embedding: vector("embedding", { dimensions: 1536 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -206,15 +217,23 @@ export const applications = pgTable(
   ],
 );
 
-// Антифрод: скарги користувачів на вакансії (МЛМ, шахрайство, спам).
-// Логіка розгляду скарг (адмін-панель) — окремий крок пізніше.
+// Антифрод: скарги користувачів — на вакансію АБО на роботодавця загалом
+// (наприклад, коли employer видалив конкретну вакансію після співбесіди —
+// скарга на роботодавця виживає незалежно від долі вакансії).
 export const reports = pgTable(
   "reports",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    jobId: uuid("job_id")
+    // Обов'язковий — кожна скарга принципово про конкретного роботодавця,
+    // навіть якщо подана через сторінку конкретної вакансії.
+    employerId: uuid("employer_id")
       .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
+      .references(() => employerProfiles.id, { onDelete: "cascade" }),
+    // Опційний — SET NULL (не CASCADE!), щоб видалення вакансії employer'ом
+    // не знищувало доказ. jobTitleSnapshot зберігає контекст, навіть якщо
+    // сама вакансія згодом видалена.
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    jobTitleSnapshot: varchar("job_title_snapshot", { length: 255 }),
     reporterId: uuid("reporter_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -222,7 +241,12 @@ export const reports = pgTable(
     status: reportStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (table) => [unique("reports_job_reporter_unique").on(table.jobId, table.reporterId)],
+  (table) => [
+    // Дедуп лише для скарг на конкретну вакансію (jobId not null) —
+    // одна скарга від юзера на одну вакансію. Для загальних скарг на
+    // роботодавця (jobId null) дедуп перевіряється на рівні коду.
+    unique("reports_job_reporter_unique").on(table.jobId, table.reporterId),
+  ],
 );
 
 // ---------- Relations ----------
@@ -284,6 +308,10 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   job: one(jobs, {
     fields: [reports.jobId],
     references: [jobs.id],
+  }),
+  employer: one(employerProfiles, {
+    fields: [reports.employerId],
+    references: [employerProfiles.id],
   }),
   reporter: one(users, {
     fields: [reports.reporterId],

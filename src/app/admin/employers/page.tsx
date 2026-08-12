@@ -39,7 +39,10 @@ export default async function AdminEmployersPage() {
             Скарги
           </Link>
           <Link href="/admin/jobs" className="underline">
-            Модерація вакансій →
+            Модерація вакансій
+          </Link>
+          <Link href="/admin/bans" className="underline">
+            Бани →
           </Link>
         </div>
       </div>
