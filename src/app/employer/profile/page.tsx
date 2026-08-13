@@ -37,6 +37,7 @@ export default async function EmployerProfilePage() {
       <EmployerProfileForm
         initialValues={{
           companyName: profile.companyName,
+          displayName: profile.displayName ?? "",
           companyDescription: profile.companyDescription ?? "",
           website: profile.website ?? "",
           location: profile.location ?? "",

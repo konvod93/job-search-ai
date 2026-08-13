@@ -31,11 +31,13 @@ export default async function CompanyProfilePage({
     .where(and(eq(jobs.employerId, company.id), eq(jobs.status, "published")))
     .orderBy(desc(jobs.createdAt));
 
+  const publicName = company.displayName || company.companyName;
+
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold">{company.companyName}</h1>
+          <h1 className="text-2xl font-semibold">{publicName}</h1>
           {company.verificationStatus === "verified" && (
             <span className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">
               ✓ Перевірена компанія
@@ -47,6 +49,11 @@ export default async function CompanyProfilePage({
             </span>
           )}
         </div>
+        {company.displayName && (
+          <p className="text-xs text-neutral-400">
+            Юридична назва: {company.companyName}
+          </p>
+        )}
         {company.location && (
           <p className="text-sm text-neutral-500">{company.location}</p>
         )}

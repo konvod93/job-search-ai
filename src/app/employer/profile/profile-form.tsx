@@ -21,6 +21,7 @@ export default function EmployerProfileForm({
 }: {
   initialValues: {
     companyName: string;
+    displayName: string;
     companyDescription: string;
     website: string;
     location: string;
@@ -34,6 +35,7 @@ export default function EmployerProfileForm({
 }) {
   const router = useRouter();
   const [companyName, setCompanyName] = useState(initialValues.companyName);
+  const [displayName, setDisplayName] = useState(initialValues.displayName);
   const [companyDescription, setCompanyDescription] = useState(
     initialValues.companyDescription,
   );
@@ -62,6 +64,7 @@ export default function EmployerProfileForm({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         companyName,
+        displayName,
         companyDescription,
         website,
         location,
@@ -88,7 +91,7 @@ export default function EmployerProfileForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <label htmlFor="companyName" className="text-sm text-neutral-600">
-          Назва компанії / установи
+          Юридична назва
         </label>
         <input
           id="companyName"
@@ -97,6 +100,30 @@ export default function EmployerProfileForm({
           onChange={(e) => setCompanyName(e.target.value)}
           className="rounded border border-neutral-300 px-3 py-2"
         />
+        <p className="text-xs text-neutral-500">
+          Офіційна назва, під якою зареєстровано бізнес (наприклад,
+          &quot;ФОП Петренко Олена Вікторівна&quot;) — саме її звіряє адмін
+          з ЄДРПОУ/ІПН при верифікації.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="displayName" className="text-sm text-neutral-600">
+          Публічна назва / бренд (необов&apos;язково)
+        </label>
+        <input
+          id="displayName"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="Наприклад, назва франшизи чи торгової марки"
+          className="rounded border border-neutral-300 px-3 py-2"
+        />
+        <p className="text-xs text-neutral-500">
+          Те, що бачать кандидати у вакансіях (наприклад, &quot;Kava
+          Milano&quot; — якщо юридична особа працює під франшизою і ця назва
+          відоміша й викликає більше довіри, ніж юридична). Якщо не
+          заповнити — всюди показується юридична назва.
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">

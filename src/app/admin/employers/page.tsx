@@ -62,6 +62,11 @@ export default async function AdminEmployersPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium">{employer.companyName}</p>
+                  {employer.displayName && (
+                    <p className="text-xs text-neutral-500">
+                      Публічна назва (не перевіряється): {employer.displayName}
+                    </p>
+                  )}
                   <p className="text-sm text-neutral-500">{email}</p>
                 </div>
                 <EmployerVerificationActions employerId={employer.id} />

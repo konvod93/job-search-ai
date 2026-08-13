@@ -16,6 +16,7 @@ const EMPLOYER_TYPE_VALUES = [
 const updateSchema = z
   .object({
     companyName: z.string().min(1).optional(),
+    displayName: z.string().optional(),
     companyDescription: z.string().optional(),
     website: z
       .string()

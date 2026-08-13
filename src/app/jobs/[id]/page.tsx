@@ -20,6 +20,7 @@ export default async function JobDetailPage({
     .select({
       job: jobs,
       companyName: employerProfiles.companyName,
+      displayName: employerProfiles.displayName,
       companyVerified: employerProfiles.verificationStatus,
       companyPhone: employerProfiles.phone,
       companyPhoneVisible: employerProfiles.phoneVisible,
@@ -33,8 +34,15 @@ export default async function JobDetailPage({
     notFound();
   }
 
-  const { job, companyName, companyVerified, companyPhone, companyPhoneVisible } =
-    row;
+  const {
+    job,
+    companyName,
+    displayName,
+    companyVerified,
+    companyPhone,
+    companyPhoneVisible,
+  } = row;
+  const publicCompanyName = displayName || companyName;
 
   const session = await auth();
   let applyBlock = (
@@ -87,7 +95,7 @@ export default async function JobDetailPage({
             href={`/companies/${job.employerId}`}
             className="text-neutral-500 underline"
           >
-            {companyName}
+            {publicCompanyName}
           </Link>
           {companyVerified === "verified" && (
             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">

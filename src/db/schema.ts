@@ -126,7 +126,13 @@ export const employerProfiles = pgTable("employer_profiles", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
+  // Юридична назва — та, що подається на верифікацію й звіряється з
+  // ЄДРПОУ (наприклад, "ФОП Петренко Олена Вікторівна").
   companyName: varchar("company_name", { length: 255 }).notNull(),
+  // Публічна назва/бренд — те, що бачать кандидати (наприклад, "Kava
+  // Milano", якщо ФОП працює під франшизою). Не перевіряється, суто
+  // маркетингове поле для довіри. Fallback на companyName, якщо не задано.
+  displayName: varchar("display_name", { length: 255 }),
   companyDescription: text("company_description"),
   website: varchar("website", { length: 255 }),
   location: varchar("location", { length: 255 }),
