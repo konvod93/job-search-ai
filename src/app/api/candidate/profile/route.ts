@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { candidateProfiles } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
+import { getSubcategoriesFor } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -27,6 +28,8 @@ const CATEGORY_VALUES = [
   "media",
   "service_staff",
   "utilities",
+  "legal",
+  "management_marketing",
   "other",
 ] as const;
 
@@ -35,6 +38,7 @@ const updateProfileSchema = z.object({
   headline: z.string().optional(),
   location: z.string().optional(),
   preferredCategory: z.enum(CATEGORY_VALUES).nullable().optional(),
+  preferredSubcategory: z.string().nullable().optional(),
   experienceYears: z.number().int().nonnegative().optional(),
   skills: z.array(z.string()).optional(),
   resumeText: z.string().optional(),
@@ -81,6 +85,29 @@ export async function PATCH(request: Request) {
       { error: "Невалідні дані", issues: parsed.error.issues },
       { status: 400 },
     );
+  }
+
+  if (parsed.data.preferredSubcategory) {
+    let effectiveCategory = parsed.data.preferredCategory;
+    if (effectiveCategory === undefined) {
+      const [existing] = await db
+        .select({ preferredCategory: candidateProfiles.preferredCategory })
+        .from(candidateProfiles)
+        .where(eq(candidateProfiles.userId, session.user.id))
+        .limit(1);
+      effectiveCategory = existing?.preferredCategory ?? null;
+    }
+    const validSubcategories = effectiveCategory
+      ? getSubcategoriesFor(effectiveCategory)
+      : [];
+    if (
+      !validSubcategories.some((s) => s.value === parsed.data.preferredSubcategory)
+    ) {
+      return NextResponse.json(
+        { error: "Підкатегорія не відповідає обраній категорії" },
+        { status: 400 },
+      );
+    }
   }
 
   const [updated] = await db

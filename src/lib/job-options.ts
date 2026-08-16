@@ -38,6 +38,52 @@ export const JOB_CATEGORIES = [
 export const JOB_CATEGORY_LABELS: Record<string, string> =
   Object.fromEntries(JOB_CATEGORIES.map((c) => [c.value, c.label]));
 
+// Підкатегорії — тільки там, де категорія реально неоднорідна (наприклад,
+// "виробництво" охоплює і токаря, і інженера-технолога — геть різні
+// профілі). Не для всіх 23 категорій, тільки де це дає реальну точність
+// матчингу. Текстове поле, а не enum — легше розширювати без міграцій.
+export const JOB_SUBCATEGORIES: Record<
+  string,
+  { value: string; label: string }[]
+> = {
+  manufacturing: [
+    {
+      value: "production_workers",
+      label: "Робітничі професії (токар, фрезерувальник, зварник тощо)",
+    },
+    {
+      value: "engineering_technical",
+      label:
+        "Інженерно-технічний персонал (майстри, інженери, технологи, конструктори)",
+    },
+  ],
+  medical: [
+    { value: "doctors", label: "Лікарі" },
+    {
+      value: "mid_junior_medical",
+      label:
+        "Середній та молодший медперсонал (фельдшери, медсестри/медбрати, акушери, санітари)",
+    },
+  ],
+};
+
+export function getSubcategoriesFor(
+  category: string,
+): { value: string; label: string }[] {
+  return JOB_SUBCATEGORIES[category] ?? [];
+}
+
+export function subcategoryLabel(
+  category: string | null | undefined,
+  subcategory: string | null | undefined,
+): string | null {
+  if (!category || !subcategory) return null;
+  return (
+    JOB_SUBCATEGORIES[category]?.find((s) => s.value === subcategory)
+      ?.label ?? null
+  );
+}
+
 export const EMPLOYER_TYPES = [
   { value: "commercial", label: "Комерційна юрособа" },
   { value: "noncommercial", label: "Некомерційна / бюджетна установа" },

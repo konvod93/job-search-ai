@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { JOB_CATEGORIES } from "@/lib/job-options";
+import { JOB_CATEGORIES, getSubcategoriesFor } from "@/lib/job-options";
 
 type Category = (typeof JOB_CATEGORIES)[number]["value"];
 
@@ -11,6 +11,7 @@ type Initial = {
   headline: string;
   location: string;
   preferredCategory: Category | null;
+  preferredSubcategory: string | null;
   experienceYears: number | null;
   skills: string[];
   resumeText: string;
@@ -25,6 +26,18 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
   const [preferredCategory, setPreferredCategory] = useState<Category | "">(
     initial.preferredCategory ?? "",
   );
+  const [preferredSubcategory, setPreferredSubcategory] = useState(
+    initial.preferredSubcategory ?? "",
+  );
+
+  function handleCategoryChange(value: Category | "") {
+    setPreferredCategory(value);
+    setPreferredSubcategory("");
+  }
+
+  const availableSubcategories = preferredCategory
+    ? getSubcategoriesFor(preferredCategory)
+    : [];
   const [experienceYears, setExperienceYears] = useState(
     initial.experienceYears?.toString() ?? "",
   );
@@ -84,6 +97,7 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
         headline: headline || undefined,
         location: location || undefined,
         preferredCategory: preferredCategory || null,
+        preferredSubcategory: preferredSubcategory || null,
         experienceYears: experienceYears ? Number(experienceYears) : undefined,
         skills,
         resumeText: resumeText || undefined,
@@ -166,7 +180,9 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
         <select
           id="preferredCategory"
           value={preferredCategory}
-          onChange={(e) => setPreferredCategory(e.target.value as Category | "")}
+          onChange={(e) =>
+            handleCategoryChange(e.target.value as Category | "")
+          }
           className="rounded border border-neutral-300 px-3 py-2"
         >
           <option value="">Не вказано (рекомендації по всіх сферах)</option>
@@ -177,6 +193,30 @@ export default function ProfileForm({ initial }: { initial: Initial }) {
           ))}
         </select>
       </div>
+
+      {availableSubcategories.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="preferredSubcategory"
+            className="text-sm text-neutral-600"
+          >
+            Підкатегорія
+          </label>
+          <select
+            id="preferredSubcategory"
+            value={preferredSubcategory}
+            onChange={(e) => setPreferredSubcategory(e.target.value)}
+            className="rounded border border-neutral-300 px-3 py-2"
+          >
+            <option value="">Не вказано</option>
+            {availableSubcategories.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div className="flex flex-1 flex-col gap-1">

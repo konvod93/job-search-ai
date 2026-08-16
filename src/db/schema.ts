@@ -122,6 +122,9 @@ export const candidateProfiles = pgTable("candidate_profiles", {
   // Бажана сфера роботи. Nullable — кандидат може не вказувати; тоді
   // рекомендації йдуть по всіх категоріях (тільки за embedding-схожістю).
   preferredCategory: jobCategoryEnum("preferred_category"),
+  // Підкатегорія (текст, не enum — набір значень залежить від категорії,
+  // див. JOB_SUBCATEGORIES в lib/job-options.ts). Валідується на рівні API.
+  preferredSubcategory: varchar("preferred_subcategory", { length: 50 }),
   experienceYears: integer("experience_years"),
   skills: jsonb("skills").$type<string[]>().default([]),
   resumeUrl: text("resume_url"),
@@ -188,6 +191,7 @@ export const jobs = pgTable("jobs", {
   description: text("description").notNull(),
   location: varchar("location", { length: 255 }),
   category: jobCategoryEnum("category").notNull().default("other"),
+  subcategory: varchar("subcategory", { length: 50 }),
   employmentType: employmentTypeEnum("employment_type").notNull(),
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),

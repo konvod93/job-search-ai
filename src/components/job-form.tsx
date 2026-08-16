@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EMPLOYMENT_TYPES, JOB_CATEGORIES } from "@/lib/job-options";
+import {
+  EMPLOYMENT_TYPES,
+  JOB_CATEGORIES,
+  getSubcategoriesFor,
+} from "@/lib/job-options";
 
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]["value"];
 type Category = (typeof JOB_CATEGORIES)[number]["value"];
@@ -13,6 +17,7 @@ export type JobFormValues = {
   description: string;
   location: string;
   category: Category;
+  subcategory: string;
   employmentType: EmploymentType;
   salaryMin: string;
   salaryMax: string;
@@ -25,6 +30,7 @@ const EMPTY_VALUES: JobFormValues = {
   description: "",
   location: "",
   category: "other",
+  subcategory: "",
   employmentType: "full_time",
   salaryMin: "",
   salaryMax: "",
@@ -52,6 +58,18 @@ export default function JobForm({
   const [category, setCategory] = useState<Category>(
     initialValues?.category ?? EMPTY_VALUES.category,
   );
+  const [subcategory, setSubcategory] = useState(
+    initialValues?.subcategory ?? EMPTY_VALUES.subcategory,
+  );
+
+  function handleCategoryChange(value: Category) {
+    setCategory(value);
+    // Підкатегорія прив'язана до категорії — при зміні категорії стара
+    // підкатегорія втрачає сенс, скидаємо.
+    setSubcategory("");
+  }
+
+  const availableSubcategories = getSubcategoriesFor(category);
   const [employmentType, setEmploymentType] = useState<EmploymentType>(
     initialValues?.employmentType ?? EMPTY_VALUES.employmentType,
   );
@@ -88,6 +106,7 @@ export default function JobForm({
         description,
         location: location || undefined,
         category,
+        subcategory: subcategory || undefined,
         employmentType,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
@@ -167,7 +186,7 @@ export default function JobForm({
           <select
             id="category"
             value={category}
-            onChange={(e) => setCategory(e.target.value as Category)}
+            onChange={(e) => handleCategoryChange(e.target.value as Category)}
             className="rounded border border-neutral-300 px-3 py-2"
           >
             {JOB_CATEGORIES.map((c) => (
@@ -177,6 +196,27 @@ export default function JobForm({
             ))}
           </select>
         </div>
+
+        {availableSubcategories.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="subcategory" className="text-sm text-neutral-600">
+              Підкатегорія
+            </label>
+            <select
+              id="subcategory"
+              value={subcategory}
+              onChange={(e) => setSubcategory(e.target.value)}
+              className="rounded border border-neutral-300 px-3 py-2"
+            >
+              <option value="">Не вказано</option>
+              {availableSubcategories.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <label htmlFor="employmentType" className="text-sm text-neutral-600">

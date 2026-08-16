@@ -8,7 +8,7 @@ import {
   jobs,
 } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
-import { JOB_CATEGORY_LABELS } from "@/lib/job-options";
+import { JOB_CATEGORY_LABELS, subcategoryLabel } from "@/lib/job-options";
 
 const STATUS_LABELS: Record<string, string> = {
   applied: "Відправлено",
@@ -27,6 +27,7 @@ export default async function CandidateDashboard() {
       fullName: candidateProfiles.fullName,
       embedding: candidateProfiles.embedding,
       preferredCategory: candidateProfiles.preferredCategory,
+      preferredSubcategory: candidateProfiles.preferredSubcategory,
     })
     .from(candidateProfiles)
     .where(eq(candidateProfiles.userId, session.user.id))
@@ -58,6 +59,7 @@ export default async function CandidateDashboard() {
     title: string;
     companyName: string;
     category: string;
+    subcategory: string | null;
     similarity: number;
   }[] = [];
 
@@ -71,6 +73,9 @@ export default async function CandidateDashboard() {
     if (candidateProfile.preferredCategory) {
       matchFilters.push(eq(jobs.category, candidateProfile.preferredCategory));
     }
+    if (candidateProfile.preferredSubcategory) {
+      matchFilters.push(eq(jobs.subcategory, candidateProfile.preferredSubcategory));
+    }
 
     recommendedJobs = await db
       .select({
@@ -78,6 +83,7 @@ export default async function CandidateDashboard() {
         title: jobs.title,
         companyName: employerProfiles.companyName,
         category: jobs.category,
+        subcategory: jobs.subcategory,
         similarity,
       })
       .from(jobs)
@@ -131,6 +137,8 @@ export default async function CandidateDashboard() {
                   <p className="font-medium">{job.title}</p>
                   <p className="text-sm text-neutral-500">
                     {job.companyName} · {JOB_CATEGORY_LABELS[job.category]}
+                    {subcategoryLabel(job.category, job.subcategory) &&
+                      ` (${subcategoryLabel(job.category, job.subcategory)})`}
                   </p>
                 </div>
                 <span className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-700">

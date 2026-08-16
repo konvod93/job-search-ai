@@ -8,6 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
+import { getSubcategoriesFor } from "@/lib/job-options";
 
 const updateJobSchema = z.object({
   title: z.string().min(1).optional(),
@@ -40,6 +41,7 @@ const updateJobSchema = z.object({
       "other",
     ])
     .optional(),
+  subcategory: z.string().nullable().optional(),
   employmentType: z
     .enum(["full_time", "part_time", "contract", "internship", "remote"])
     .optional(),
@@ -123,6 +125,17 @@ export async function PATCH(
     );
   }
 
+  if (parsed.data.subcategory) {
+    const effectiveCategory = parsed.data.category ?? row.job.category;
+    const validSubcategories = getSubcategoriesFor(effectiveCategory);
+    if (!validSubcategories.some((s) => s.value === parsed.data.subcategory)) {
+      return NextResponse.json(
+        { error: "Підкатегорія не відповідає обраній категорії" },
+        { status: 400 },
+      );
+    }
+  }
+
   // Вакансія опублікована/публікується зараз → перевіряємо AI-модерацією
   // (використовуючи вже оновлений текст, якщо title/description змінились
   // у цьому запиті). "Fail open" при збої AI — не блокуємо employer'а.
@@ -132,6 +145,7 @@ export async function PATCH(
     description?: string;
     location?: string;
     category?: (typeof parsed.data)["category"];
+    subcategory?: string | null;
     employmentType?: (typeof parsed.data)["employmentType"];
     salaryMin?: number;
     salaryMax?: number;

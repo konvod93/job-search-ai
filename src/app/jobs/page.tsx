@@ -7,6 +7,7 @@ import {
   EMPLOYMENT_TYPE_LABELS,
   JOB_CATEGORIES,
   JOB_CATEGORY_LABELS,
+  subcategoryLabel,
 } from "@/lib/job-options";
 
 type SearchParams = Promise<{
@@ -131,6 +132,8 @@ export default async function JobsPage({
             </p>
             <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
               {JOB_CATEGORY_LABELS[job.category]}
+              {subcategoryLabel(job.category, job.subcategory) &&
+                ` · ${subcategoryLabel(job.category, job.subcategory)}`}
             </span>
           </Link>
         ))}

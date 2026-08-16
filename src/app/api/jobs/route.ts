@@ -8,6 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
+import { getSubcategoriesFor } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -35,23 +36,33 @@ const CATEGORY_VALUES = [
   "other",
 ] as const;
 
-const createJobSchema = z.object({
-  title: z.string().min(1, "Вкажіть назву вакансії"),
-  description: z.string().min(1, "Вкажіть опис вакансії"),
-  location: z.string().optional(),
-  category: z.enum(CATEGORY_VALUES),
-  employmentType: z.enum([
-    "full_time",
-    "part_time",
-    "contract",
-    "internship",
-    "remote",
-  ]),
-  salaryMin: z.number().int().nonnegative().optional(),
-  salaryMax: z.number().int().nonnegative().optional(),
-  skillsRequired: z.array(z.string()).optional(),
-  status: z.enum(["draft", "published"]).default("draft"),
-});
+const createJobSchema = z
+  .object({
+    title: z.string().min(1, "Вкажіть назву вакансії"),
+    description: z.string().min(1, "Вкажіть опис вакансії"),
+    location: z.string().optional(),
+    category: z.enum(CATEGORY_VALUES),
+    subcategory: z.string().optional(),
+    employmentType: z.enum([
+      "full_time",
+      "part_time",
+      "contract",
+      "internship",
+      "remote",
+    ]),
+    salaryMin: z.number().int().nonnegative().optional(),
+    salaryMax: z.number().int().nonnegative().optional(),
+    skillsRequired: z.array(z.string()).optional(),
+    status: z.enum(["draft", "published"]).default("draft"),
+  })
+  .refine(
+    (data) => {
+      if (!data.subcategory) return true;
+      const valid = getSubcategoriesFor(data.category);
+      return valid.some((s) => s.value === data.subcategory);
+    },
+    { message: "Підкатегорія не відповідає обраній категорії", path: ["subcategory"] },
+  );
 
 // GET /api/jobs?q=...&location=...&employmentType=...&category=...
 // Публічний перегляд — тільки опубліковані вакансії
@@ -267,6 +278,7 @@ export async function POST(request: Request) {
       description: parsed.data.description,
       location: parsed.data.location,
       category: parsed.data.category,
+      subcategory: parsed.data.subcategory,
       employmentType: parsed.data.employmentType,
       salaryMin: parsed.data.salaryMin,
       salaryMax: parsed.data.salaryMax,
