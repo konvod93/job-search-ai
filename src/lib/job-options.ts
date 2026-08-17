@@ -14,7 +14,7 @@ export const JOB_CATEGORIES = [
   { value: "construction", label: "Будівництво та ремонт" },
   { value: "manufacturing", label: "Виробництво" },
   { value: "trade", label: "Торгівля" },
-  { value: "drivers", label: "Водії" },
+  { value: "drivers", label: "Водії кат. A/B (особисті, таксі, кур'єри)" },
   { value: "logistics", label: "Логістика та склад" },
   { value: "agriculture", label: "Сільське господарство" },
   { value: "government", label: "Державні органи та служби" },
@@ -53,6 +53,17 @@ export const JOB_SUBCATEGORIES: Record<
   string,
   { value: string; label: string }[]
 > = {
+  construction: [
+    {
+      value: "construction_itp",
+      label: "ІТП (інженери, архітектори, виконроби)",
+    },
+    {
+      value: "construction_workers",
+      label:
+        "Будівельні робітники (муляри, маляри, штукатури, монтажники, стропальники, кранівники, екскаваторники, бульдозеристи тощо)",
+    },
+  ],
   manufacturing: [
     {
       value: "production_workers",
@@ -71,6 +82,18 @@ export const JOB_SUBCATEGORIES: Record<
       label:
         "Середній та молодший медперсонал (фельдшери, медсестри/медбрати, акушери, санітари)",
     },
+  ],
+  trade: [
+    { value: "sales_staff", label: "Продавці / касири" },
+    {
+      value: "trade_management",
+      label: "Адміністратори / менеджери магазину",
+    },
+  ],
+  drivers: [
+    { value: "personal_driver", label: "Особистий водій" },
+    { value: "taxi_driver", label: "Таксист" },
+    { value: "courier_driver", label: "Кур'єр (авто/мото)" },
   ],
   it: [
     {

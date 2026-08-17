@@ -5,12 +5,14 @@ export type TrustGateResult = {
   externalContactPhrase: string | null;
   isWomenEntertainmentRole: boolean;
   entertainmentReason: string | null;
+  isSecurityDriverRole: boolean;
+  securityDriverReason: string | null;
 };
 
 const TOOL = {
   name: "submit_trust_gate_result",
   description:
-    "Повертає результат перевірки вакансії на дві незалежні ознаки довіри",
+    "Повертає результат перевірки вакансії на три незалежні ознаки довіри",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -34,17 +36,29 @@ const TOOL = {
         description:
           "Коротке пояснення (до 15 слів), яку саме роль шукають. Порожній рядок, якщо is_women_entertainment_role=false.",
       },
+      is_security_driver_role: {
+        type: "boolean" as const,
+        description:
+          "true, якщо вакансія 'особистого водія' насправді вимагає навичок охорони/тілоохоронця",
+      },
+      security_driver_reason: {
+        type: "string" as const,
+        description:
+          "Коротке пояснення (до 15 слів), яка саме ознака охорони знайдена. Порожній рядок, якщо is_security_driver_role=false.",
+      },
     },
     required: [
       "has_external_contact",
       "external_contact_phrase",
       "is_women_entertainment_role",
       "entertainment_reason",
+      "is_security_driver_role",
+      "security_driver_reason",
     ],
   },
 };
 
-const SYSTEM_PROMPT = `Ти аналізуєш текст вакансії на дві незалежні ознаки. Обидві застосовуються тільки до неверифікованих/малодовірених роботодавців — це додатковий бар'єр, поки особу роботодавця не підтверджено вручну.
+const SYSTEM_PROMPT = `Ти аналізуєш текст вакансії на три незалежні ознаки. Усі застосовуються тільки до неверифікованих/малодовірених роботодавців — це додатковий бар'єр, поки особу роботодавця не підтверджено вручну.
 
 1. **has_external_contact** — чи оголошення спрямовує кандидата на зв'язок ПОЗА платформою (Telegram, Viber, WhatsApp, Instagram директ, Discord тощо), включно із замаскованими варіантами:
    - заміна "@" словом ("телеграм песик username", "тг собака username", "at username")
@@ -53,13 +67,15 @@ const SYSTEM_PROMPT = `Ти аналізуєш текст вакансії на 
    - фрази на кшталт "докладніше в...", "пишіть/дзвоніть в...", "весь список у..." з посиланням на сторонній канал
    Контактний телефон компанії в окремому полі профілю — це нормально, не стосується цієї перевірки. Оцінюєш тільки сам текст вакансії (title+description).
 
-2. **is_women_entertainment_role** — чи вакансія шукає саме ЖІНОК на роль моделі, танцівниці, співачки, акторки чи подібну роль у шоу-бізнесі/індустрії розваг/розважальних закладах. Позначай незалежно від того, виглядає пропозиція легітimною чи ні — сама категорія ролі вимагає додаткової верифікації роботодавця (навіть легітимний театр чи кіностудія повинні підтвердити реєстрацію перед публікацією такої вакансії, бо ця категорія оголошень часто використовується для вербування в секс-індустрію).`;
+2. **is_women_entertainment_role** — чи вакансія шукає саме ЖІНОК на роль моделі, танцівниці, співачки, акторки чи подібну роль у шоу-бізнесі/індустрії розваг/розважальних закладах. Позначай незалежно від того, виглядає пропозиція легітимною чи ні — сама категорія ролі вимагає додаткової верифікації роботодавця (навіть легітимний театр чи кіностудія повинні підтвердити реєстрацію перед публікацією такої вакансії, бо ця категорія оголошень часто використовується для вербування в секс-індустрію).
+
+3. **is_security_driver_role** — чи вакансія "особистого водія" насправді описує роль тілоохоронця/охоронця під виглядом водія. Ознаки: вимога володіння зброєю чи вогнепальною зброєю, "силове"/екстремальне водіння, досвід служби в силових структурах (армія, поліція, спецпризначення, ЧВК), фізична підготовка/бойові мистецтва як вимога. Позначай незалежно від того, виглядає пропозиція легітимною чи ні — легітимна охоронна фірма теж повинна верифікуватись перед такою публікацією, бо цей патерн часто використовується для вербування в кримінальні угруповання під виглядом "водія". Звичайна вакансія особистого водія без цих ознак (просто керує авто) — це НЕ позначається.`;
 
 /**
- * Перевіряє вакансію на зовнішні контакти й на "жіночі" ролі в шоу-бізнесі —
- * обидві перевірки застосовуються лише до неверифікованих/ФОП роботодавців
- * (викликається умовно з роуту, а не завжди). null при збої AI — виклик
- * коду вирішує, як поводитись.
+ * Перевіряє вакансію на зовнішні контакти, "жіночі" ролі в шоу-бізнесі й
+ * водіїв-охоронців — усі три перевірки застосовуються лише до
+ * неверифікованих/ФОП роботодавців (викликається умовно з роуту, а не
+ * завжди). null при збої AI — виклик коду вирішує, як поводитись.
  */
 export async function checkTrustGate(
   title: string,
@@ -70,7 +86,7 @@ export async function checkTrustGate(
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
+      max_tokens: 350,
       system: SYSTEM_PROMPT,
       tools: [TOOL],
       tool_choice: { type: "tool", name: TOOL.name },
@@ -95,6 +111,8 @@ export async function checkTrustGate(
       external_contact_phrase: string;
       is_women_entertainment_role: boolean;
       entertainment_reason: string;
+      is_security_driver_role: boolean;
+      security_driver_reason: string;
     };
 
     return {
@@ -105,6 +123,10 @@ export async function checkTrustGate(
       isWomenEntertainmentRole: input.is_women_entertainment_role,
       entertainmentReason: input.is_women_entertainment_role
         ? input.entertainment_reason
+        : null,
+      isSecurityDriverRole: input.is_security_driver_role,
+      securityDriverReason: input.is_security_driver_role
+        ? input.security_driver_reason
         : null,
     };
   } catch (err) {

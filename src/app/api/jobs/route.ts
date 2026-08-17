@@ -273,6 +273,18 @@ export async function POST(request: Request) {
           { status: 403 },
         );
       }
+
+      if (
+        trustGate?.isSecurityDriverRole &&
+        employerProfile.verificationStatus !== "verified"
+      ) {
+        return NextResponse.json(
+          {
+            error: `Вакансія "особистого водія" з ознаками охорони (зброя, силове водіння, досвід силових структур) вимагає верифікації роботодавця. Причина: ${trustGate.securityDriverReason}. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.`,
+          },
+          { status: 403 },
+        );
+      }
     }
   }
 
