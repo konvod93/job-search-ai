@@ -64,6 +64,19 @@ export const JOB_SUBCATEGORIES: Record<
         "Будівельні робітники (муляри, маляри, штукатури, монтажники, стропальники, кранівники, екскаваторники, бульдозеристи тощо)",
     },
   ],
+  logistics: [
+    { value: "long_haul_drivers", label: "Водії-дальнобійники" },
+    {
+      value: "truck_drivers_forwarders",
+      label: "Водії вантажівок та експедитори",
+    },
+    { value: "loaders", label: "Вантажники" },
+    {
+      value: "warehouse_admin",
+      label: "Адміністративний персонал складу (комірники та ін.)",
+    },
+    { value: "logistics_couriers", label: "Кур'єри (кур'єрська доставка)" },
+  ],
   manufacturing: [
     {
       value: "production_workers",
