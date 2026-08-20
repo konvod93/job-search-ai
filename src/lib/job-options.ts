@@ -35,6 +35,7 @@ export const JOB_CATEGORIES = [
   { value: "show_business", label: "Шоу-бізнес" },
   { value: "media", label: "Медіа" },
   { value: "service_staff", label: "Обслуговий персонал" },
+  { value: "security", label: "Охорона" },
   { value: "utilities", label: "ЖКГ та благоустрій" },
   { value: "legal", label: "Юридичні працівники" },
   { value: "management_marketing", label: "Менеджмент та маркетинг" },
@@ -107,6 +108,14 @@ export const JOB_SUBCATEGORIES: Record<
     { value: "personal_driver", label: "Особистий водій" },
     { value: "taxi_driver", label: "Таксист" },
     { value: "courier_driver", label: "Кур'єр (авто/мото)" },
+  ],
+  security: [
+    { value: "object_security", label: "Охорона об'єктів" },
+    { value: "personal_security", label: "Охорона осіб (тілоохоронці)" },
+    {
+      value: "security_systems_installation",
+      label: "Монтаж та налаштування охоронних систем",
+    },
   ],
   it: [
     {

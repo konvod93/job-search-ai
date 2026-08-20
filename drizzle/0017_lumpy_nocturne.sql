@@ -1,0 +1,1 @@
+ALTER TYPE "public"."job_category" ADD VALUE 'security' BEFORE 'utilities';

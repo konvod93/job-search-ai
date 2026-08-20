@@ -33,6 +33,7 @@ const CATEGORY_VALUES = [
   "show_business",
   "media",
   "service_staff",
+  "security",
   "utilities",
   "legal",
   "management_marketing",
