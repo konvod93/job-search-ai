@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, cosineDistance, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   applications,
@@ -71,10 +71,23 @@ export default async function CandidateDashboard() {
 
     const matchFilters = [eq(jobs.status, "published"), isNotNull(jobs.embedding)];
     if (candidateProfile.preferredCategory) {
-      matchFilters.push(eq(jobs.category, candidateProfile.preferredCategory));
-    }
-    if (candidateProfile.preferredSubcategory) {
-      matchFilters.push(eq(jobs.subcategory, candidateProfile.preferredSubcategory));
+      // Матч або по основній категорії (+ підкатегорія, якщо вказана), або
+      // якщо вакансія крос-лістингована в бажану категорію employer'ом
+      // (підкатегорія для крос-лістингу не застосовується — вона
+      // прив'язана тільки до основної категорії вакансії).
+      const primaryMatch = candidateProfile.preferredSubcategory
+        ? and(
+            eq(jobs.category, candidateProfile.preferredCategory),
+            eq(jobs.subcategory, candidateProfile.preferredSubcategory),
+          )
+        : eq(jobs.category, candidateProfile.preferredCategory);
+
+      matchFilters.push(
+        or(
+          primaryMatch,
+          sql`${jobs.crossListedCategories} @> ${JSON.stringify([candidateProfile.preferredCategory])}::jsonb`,
+        )!,
+      );
     }
 
     recommendedJobs = await db

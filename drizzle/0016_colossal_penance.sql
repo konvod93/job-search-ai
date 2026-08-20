@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "cross_listed_categories" jsonb DEFAULT '[]'::jsonb;

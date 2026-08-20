@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { jobs } from "@/db/schema";
 import {
@@ -44,7 +44,10 @@ export default async function JobsPage({
   }
   if (category && JOB_CATEGORIES.some((c) => c.value === category)) {
     filters.push(
-      eq(jobs.category, category as (typeof JOB_CATEGORIES)[number]["value"]),
+      or(
+        eq(jobs.category, category as (typeof JOB_CATEGORIES)[number]["value"]),
+        sql`${jobs.crossListedCategories} @> ${JSON.stringify([category])}::jsonb`,
+      )!,
     );
   }
 
@@ -135,6 +138,18 @@ export default async function JobsPage({
               {subcategoryLabel(job.category, job.subcategory) &&
                 ` · ${subcategoryLabel(job.category, job.subcategory)}`}
             </span>
+            {job.crossListedCategories && job.crossListedCategories.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {job.crossListedCategories.map((c) => (
+                  <span
+                    key={c}
+                    className="w-fit rounded-full border border-neutral-200 px-2 py-0.5 text-xs text-neutral-500"
+                  >
+                    + {JOB_CATEGORY_LABELS[c]}
+                  </span>
+                ))}
+              </div>
+            )}
           </Link>
         ))}
       </div>

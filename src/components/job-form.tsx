@@ -18,6 +18,7 @@ export type JobFormValues = {
   location: string;
   category: Category;
   subcategory: string;
+  crossListedCategories: Category[];
   employmentType: EmploymentType;
   salaryMin: string;
   salaryMax: string;
@@ -31,6 +32,7 @@ const EMPTY_VALUES: JobFormValues = {
   location: "",
   category: "other",
   subcategory: "",
+  crossListedCategories: [],
   employmentType: "full_time",
   salaryMin: "",
   salaryMax: "",
@@ -61,12 +63,27 @@ export default function JobForm({
   const [subcategory, setSubcategory] = useState(
     initialValues?.subcategory ?? EMPTY_VALUES.subcategory,
   );
+  const [crossListedCategories, setCrossListedCategories] = useState<
+    Category[]
+  >(initialValues?.crossListedCategories ?? EMPTY_VALUES.crossListedCategories);
+
+  function toggleCrossListed(value: Category) {
+    setCrossListedCategories((prev) =>
+      prev.includes(value)
+        ? prev.filter((c) => c !== value)
+        : prev.length < 3
+          ? [...prev, value]
+          : prev,
+    );
+  }
 
   function handleCategoryChange(value: Category) {
     setCategory(value);
     // Підкатегорія прив'язана до категорії — при зміні категорії стара
     // підкатегорія втрачає сенс, скидаємо.
     setSubcategory("");
+    // Основна категорія не може одночасно бути й додатковою
+    setCrossListedCategories((prev) => prev.filter((c) => c !== value));
   }
 
   const availableSubcategories = getSubcategoriesFor(category);
@@ -107,6 +124,8 @@ export default function JobForm({
         location: location || undefined,
         category,
         subcategory: subcategory || undefined,
+        crossListedCategories:
+          crossListedCategories.length > 0 ? crossListedCategories : undefined,
         employmentType,
         salaryMin: salaryMin ? Number(salaryMin) : undefined,
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
@@ -217,6 +236,35 @@ export default function JobForm({
             </select>
           </div>
         )}
+
+        <div className="flex flex-col gap-1">
+          <p className="text-sm text-neutral-600">
+            Також показувати в категоріях (до 3, необов&apos;язково)
+          </p>
+          <p className="text-xs text-neutral-500">
+            Наприклад, вакансія кур&apos;єра зі своїм авто цікавить і тих,
+            хто шукає в &quot;Логістика&quot;, і тих, хто в &quot;Водії&quot;
+          </p>
+          <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded border border-neutral-200 p-2">
+            {JOB_CATEGORIES.filter((c) => c.value !== category).map((c) => (
+              <label
+                key={c.value}
+                className="flex items-center gap-2 text-sm text-neutral-700"
+              >
+                <input
+                  type="checkbox"
+                  checked={crossListedCategories.includes(c.value)}
+                  disabled={
+                    !crossListedCategories.includes(c.value) &&
+                    crossListedCategories.length >= 3
+                  }
+                  onChange={() => toggleCrossListed(c.value)}
+                />
+                {c.label}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="employmentType" className="text-sm text-neutral-600">

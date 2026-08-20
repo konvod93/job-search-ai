@@ -10,44 +10,45 @@ import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import { getSubcategoriesFor } from "@/lib/job-options";
 
+const CATEGORY_VALUES = [
+  "it",
+  "construction",
+  "manufacturing",
+  "trade",
+  "drivers",
+  "logistics",
+  "agriculture",
+  "government",
+  "accounting",
+  "education",
+  "military",
+  "medical",
+  "hospitality",
+  "catering",
+  "auto_service",
+  "maintenance",
+  "passenger_transport",
+  "railway_transport",
+  "maritime_transport",
+  "culture",
+  "science",
+  "facilities_management",
+  "show_business",
+  "media",
+  "service_staff",
+  "utilities",
+  "legal",
+  "management_marketing",
+  "other",
+] as const;
+
 const updateJobSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   location: z.string().optional(),
-  category: z
-    .enum([
-      "it",
-      "construction",
-      "manufacturing",
-      "trade",
-      "drivers",
-      "logistics",
-      "agriculture",
-      "government",
-      "accounting",
-      "education",
-      "military",
-      "medical",
-      "hospitality",
-      "catering",
-      "auto_service",
-      "maintenance",
-      "passenger_transport",
-      "railway_transport",
-      "maritime_transport",
-      "culture",
-      "science",
-      "facilities_management",
-      "show_business",
-      "media",
-      "service_staff",
-      "utilities",
-      "legal",
-      "management_marketing",
-      "other",
-    ])
-    .optional(),
+  category: z.enum(CATEGORY_VALUES).optional(),
   subcategory: z.string().nullable().optional(),
+  crossListedCategories: z.array(z.enum(CATEGORY_VALUES)).max(3).optional(),
   employmentType: z
     .enum(["full_time", "part_time", "contract", "internship", "remote"])
     .optional(),
@@ -152,6 +153,7 @@ export async function PATCH(
     location?: string;
     category?: (typeof parsed.data)["category"];
     subcategory?: string | null;
+    crossListedCategories?: string[];
     employmentType?: (typeof parsed.data)["employmentType"];
     salaryMin?: number;
     salaryMax?: number;
@@ -232,6 +234,18 @@ export async function PATCH(
         return NextResponse.json(
           {
             error: `Вакансія "особистого водія" з ознаками охорони (зброя, силове водіння, досвід силових структур) вимагає верифікації роботодавця. Причина: ${trustGate.securityDriverReason}. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.`,
+          },
+          { status: 403 },
+        );
+      }
+
+      if (
+        trustGate?.isSuspiciousCourierRole &&
+        row.verificationStatus !== "verified"
+      ) {
+        return NextResponse.json(
+          {
+            error: `Кур'єрська вакансія з ознаками, типовими для вербування в незаконні перевезення, вимагає верифікації роботодавця. Причина: ${trustGate.courierReason}. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.`,
           },
           { status: 403 },
         );

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
-import JobForm from "@/components/job-form";
+import JobForm, { type JobFormValues } from "@/components/job-form";
 
 export default async function EditJobPage({
   params,
@@ -38,6 +38,8 @@ export default async function EditJobPage({
         location: job.location ?? "",
         category: job.category,
         subcategory: job.subcategory ?? "",
+        crossListedCategories: (job.crossListedCategories ??
+          []) as JobFormValues["crossListedCategories"],
         employmentType: job.employmentType,
         salaryMin: job.salaryMin?.toString() ?? "",
         salaryMax: job.salaryMax?.toString() ?? "",

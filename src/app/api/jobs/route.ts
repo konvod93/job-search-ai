@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, desc, eq, ilike, or } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
@@ -49,6 +49,7 @@ const createJobSchema = z
     location: z.string().optional(),
     category: z.enum(CATEGORY_VALUES),
     subcategory: z.string().optional(),
+    crossListedCategories: z.array(z.enum(CATEGORY_VALUES)).max(3).optional(),
     employmentType: z.enum([
       "full_time",
       "part_time",
@@ -68,7 +69,11 @@ const createJobSchema = z
       return valid.some((s) => s.value === data.subcategory);
     },
     { message: "Підкатегорія не відповідає обраній категорії", path: ["subcategory"] },
-  );
+  )
+  .refine((data) => !data.crossListedCategories?.includes(data.category), {
+    message: "Додаткова категорія не може дублювати основну",
+    path: ["crossListedCategories"],
+  });
 
 // GET /api/jobs?q=...&location=...&employmentType=...&category=...
 // Публічний перегляд — тільки опубліковані вакансії
@@ -112,7 +117,12 @@ export async function GET(request: Request) {
     );
   }
   if (category && (CATEGORY_VALUES as readonly string[]).includes(category)) {
-    filters.push(eq(jobs.category, category as (typeof CATEGORY_VALUES)[number]));
+    filters.push(
+      or(
+        eq(jobs.category, category as (typeof CATEGORY_VALUES)[number]),
+        sql`${jobs.crossListedCategories} @> ${JSON.stringify([category])}::jsonb`,
+      )!,
+    );
   }
 
   const results = await db
@@ -285,6 +295,18 @@ export async function POST(request: Request) {
           { status: 403 },
         );
       }
+
+      if (
+        trustGate?.isSuspiciousCourierRole &&
+        employerProfile.verificationStatus !== "verified"
+      ) {
+        return NextResponse.json(
+          {
+            error: `Кур'єрська вакансія з ознаками, типовими для вербування в незаконні перевезення, вимагає верифікації роботодавця. Причина: ${trustGate.courierReason}. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.`,
+          },
+          { status: 403 },
+        );
+      }
     }
   }
 
@@ -297,6 +319,7 @@ export async function POST(request: Request) {
       location: parsed.data.location,
       category: parsed.data.category,
       subcategory: parsed.data.subcategory,
+      crossListedCategories: parsed.data.crossListedCategories ?? [],
       employmentType: parsed.data.employmentType,
       salaryMin: parsed.data.salaryMin,
       salaryMax: parsed.data.salaryMax,

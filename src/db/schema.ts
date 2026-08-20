@@ -198,6 +198,14 @@ export const jobs = pgTable("jobs", {
   location: varchar("location", { length: 255 }),
   category: jobCategoryEnum("category").notNull().default("other"),
   subcategory: varchar("subcategory", { length: 50 }),
+  // Додаткові категорії, в яких ця вакансія теж має показуватись (окрім
+  // основної category) — наприклад, "кур'єр зі своїм авто" логічно
+  // цікавить і тих, хто шукає в "Логістика", і тих, хто в "Водії кат.
+  // A/B". Тільки на рівні категорії (без підкатегорій) — навмисно просте
+  // рішення, щоб не ускладнювати jsonb-запити.
+  crossListedCategories: jsonb("cross_listed_categories")
+    .$type<string[]>()
+    .default([]),
   employmentType: employmentTypeEnum("employment_type").notNull(),
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
