@@ -223,6 +223,19 @@ export async function PATCH(
         );
       }
 
+      if (
+        effectiveCategory === "agriculture" &&
+        effectiveSubcategory === "seasonal_harvest"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація сезонних сільгоспвакансій (збір врожаю тощо) вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
       const trustGate = await checkTrustGate(title, description);
 
       if (trustGate?.hasExternalContact) {

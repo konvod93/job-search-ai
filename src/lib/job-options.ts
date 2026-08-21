@@ -109,6 +109,35 @@ export const JOB_SUBCATEGORIES: Record<
     { value: "taxi_driver", label: "Таксист" },
     { value: "courier_driver", label: "Кур'єр (авто/мото)" },
   ],
+  agriculture: [
+    {
+      value: "agronomy_crop_production",
+      label: "Агрономія та рослинництво (агрономи, селекціонери, технологи)",
+    },
+    {
+      value: "agricultural_machinery",
+      label: "Агротехніка та механізація (трактористи, комбайнери)",
+    },
+    {
+      value: "livestock_veterinary",
+      label:
+        "Тваринництво, птахівництво, ветеринарія (ветлікарі, зоотехніки, технологи птахофабрик, оператори доїння, наглядачі за тваринами)",
+    },
+    {
+      value: "seasonal_harvest",
+      label:
+        "Сезонні роботи та збір врожаю (збирачі ягід/фруктів/овочів, польові різноробочі, сортувальники, пакувальники)",
+    },
+    {
+      value: "landscaping_gardening",
+      label:
+        "Садівництво, ландшафт та благоустрій (садівник, ландшафтний дизайнер, озеленувач, доглядальник за газонами)",
+    },
+    {
+      value: "forestry_fishery",
+      label: "Лісове та рибне господарство (єгер, пилорамник, вальник лісу, рибовод)",
+    },
+  ],
   security: [
     { value: "object_security", label: "Охорона об'єктів" },
     { value: "personal_security", label: "Охорона осіб (тілоохоронці)" },

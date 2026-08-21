@@ -274,6 +274,21 @@ export async function POST(request: Request) {
         );
       }
 
+      // Сезонна сільгоспробота (збір врожаю тощо) — класичний вектор
+      // трудового рабства/трафікінгу. Теж пряма структурна перевірка.
+      if (
+        parsed.data.category === "agriculture" &&
+        parsed.data.subcategory === "seasonal_harvest"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація сезонних сільгоспвакансій (збір врожаю тощо) вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
       const trustGate = await checkTrustGate(
         parsed.data.title,
         parsed.data.description,
