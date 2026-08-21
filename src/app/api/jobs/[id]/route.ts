@@ -204,6 +204,25 @@ export async function PATCH(
       row.employerType === "fop" || row.verificationStatus !== "verified";
 
     if (isLowTrust) {
+      const effectiveCategory = parsed.data.category ?? row.job.category;
+      const effectiveSubcategory =
+        parsed.data.subcategory !== undefined
+          ? parsed.data.subcategory
+          : row.job.subcategory;
+
+      if (
+        effectiveCategory === "security" &&
+        effectiveSubcategory === "personal_security"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій охорони осіб (тілоохоронці) вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
       const trustGate = await checkTrustGate(title, description);
 
       if (trustGate?.hasExternalContact) {

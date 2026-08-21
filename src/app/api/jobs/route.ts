@@ -258,6 +258,22 @@ export async function POST(request: Request) {
       employerProfile.verificationStatus !== "verified";
 
     if (isLowTrust) {
+      // Пряма структурна перевірка (без AI) — категорія вже явно каже, що
+      // це охорона осіб, тож не треба вгадувати з тексту, як для водія.
+      // Ризик вербування в кримінал під виглядом тілоохоронця той самий.
+      if (
+        parsed.data.category === "security" &&
+        parsed.data.subcategory === "personal_security"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій охорони осіб (тілоохоронці) вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
       const trustGate = await checkTrustGate(
         parsed.data.title,
         parsed.data.description,
