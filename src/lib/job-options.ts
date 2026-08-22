@@ -109,6 +109,18 @@ export const JOB_SUBCATEGORIES: Record<
     { value: "taxi_driver", label: "Таксист" },
     { value: "courier_driver", label: "Кур'єр (авто/мото)" },
   ],
+  government: [
+    {
+      value: "civil_service",
+      label:
+        "Державна служба та самоврядування (спеціаліст міністерства, державний експерт, секретар селищної ради, юрист виконкому)",
+    },
+    {
+      value: "law_enforcement",
+      label:
+        "Правоохоронні органи та спеціальні служби (суддя, прокурор, слідчий, оперуповноважений, інспектор патрульної поліції, детектив НАБУ, інспектор ДСНС)",
+    },
+  ],
   agriculture: [
     {
       value: "agronomy_crop_production",

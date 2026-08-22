@@ -236,6 +236,16 @@ export async function PATCH(
         );
       }
 
+      if (effectiveCategory === "government") {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій у категорії \"Державні органи та служби\" вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
       const trustGate = await checkTrustGate(title, description);
 
       if (trustGate?.hasExternalContact) {
