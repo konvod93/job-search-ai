@@ -19,7 +19,7 @@ export const JOB_CATEGORIES = [
   { value: "agriculture", label: "Сільське господарство" },
   { value: "government", label: "Державні органи та служби" },
   { value: "accounting", label: "Бухгалтерія та фінанси" },
-  { value: "education", label: "Освіта" },
+  { value: "education", label: "Освіта та виховання" },
   { value: "military", label: "Військові професії" },
   { value: "medical", label: "Медичні працівники" },
   { value: "veterinary_medicine", label: "Ветеринарна медицина" },
@@ -89,6 +89,10 @@ export const JOB_SUBCATEGORIES: Record<
       label:
         "Інженерно-технічний персонал (майстри, інженери, технологи, конструктори)",
     },
+    {
+      value: "quality_control",
+      label: "Контроль якості, ВТК та лабораторія",
+    },
   ],
   medical: [
     { value: "doctors", label: "Лікарі" },
@@ -96,6 +100,18 @@ export const JOB_SUBCATEGORIES: Record<
       value: "mid_junior_medical",
       label:
         "Середній та молодший медперсонал (фельдшери, медсестри/медбрати, акушери, санітари)",
+    },
+  ],
+  education: [
+    { value: "higher_education", label: "Вищі навчальні заклади" },
+    {
+      value: "vocational_education",
+      label: "Середнє професійне навчання (коледжі та ін.)",
+    },
+    { value: "school_education", label: "Шкільна освіта" },
+    {
+      value: "preschool_education",
+      label: "Дошкільне виховання та няні",
     },
   ],
   veterinary_medicine: [
