@@ -22,6 +22,7 @@ export const JOB_CATEGORIES = [
   { value: "education", label: "Освіта" },
   { value: "military", label: "Військові професії" },
   { value: "medical", label: "Медичні працівники" },
+  { value: "veterinary_medicine", label: "Ветеринарна медицина" },
   { value: "hospitality", label: "Готельно-ресторанний сектор" },
   { value: "catering", label: "Громадське та корпоративне харчування" },
   { value: "auto_service", label: "Автосервіс / СТО" },
@@ -95,6 +96,17 @@ export const JOB_SUBCATEGORIES: Record<
       value: "mid_junior_medical",
       label:
         "Середній та молодший медперсонал (фельдшери, медсестри/медбрати, акушери, санітари)",
+    },
+  ],
+  veterinary_medicine: [
+    {
+      value: "state_veterinary_service",
+      label:
+        "Державна ветеринарна служба (районна служба, виклики до дрібних господарів, реєстрація/вакцинація худоби, лабораторний контроль на ринках)",
+    },
+    {
+      value: "pet_veterinary",
+      label: "Ветеринари pet-сектору (клініки для котів, собак, птахів тощо)",
     },
   ],
   trade: [

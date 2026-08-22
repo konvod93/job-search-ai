@@ -20,6 +20,7 @@ const CATEGORY_VALUES = [
   "education",
   "military",
   "medical",
+  "veterinary_medicine",
   "hospitality",
   "catering",
   "auto_service",

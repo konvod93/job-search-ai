@@ -50,6 +50,7 @@ export const jobCategoryEnum = pgEnum("job_category", [
   "education",
   "military",
   "medical",
+  "veterinary_medicine",
   "hospitality",
   "catering",
   "auto_service",
