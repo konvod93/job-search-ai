@@ -110,8 +110,22 @@ export const JOB_SUBCATEGORIES: Record<
     },
     { value: "school_education", label: "Шкільна освіта" },
     {
-      value: "preschool_education",
-      label: "Дошкільне виховання та няні",
+      value: "preschool_institutions",
+      label: "Дошкільні заклади (садочки)",
+    },
+    {
+      value: "nannies",
+      label: "Няні (лише через агенції — прямий найм фізособою заборонено)",
+    },
+    {
+      value: "governess",
+      label:
+        "Гувернери / домашні педагоги (підготовка до вступу в елітні заклади — лише через агенції)",
+    },
+    {
+      value: "tutors",
+      label:
+        "Репетитори (підвищення успішності, підготовка до екзаменів та вступу — лише через агенції)",
     },
   ],
   veterinary_medicine: [
@@ -254,4 +268,30 @@ export function registrationNumberLabel(
   employerType: string | null | undefined,
 ): string {
   return employerType === "fop" ? "ІПН / РНОКПП" : "ЄДРПОУ";
+}
+
+// Підкатегорії, де прямий найм фізособою/ФОП — реальний ризик для обох
+// сторін (няня/гувернер/репетитор "з вулиці" без перевірки документів,
+// мед- і психоогляду може бути небезпечною людиною; з іншого боку — сам
+// найм неповнолітньої дитини незнайомцем без посередника-агенції теж
+// ризик). Публікувати такі вакансії можуть тільки верифіковані ЮРОСОБИ
+// (агенції) — навіть верифікований ФОП тут недостатньо, бо ФОП — це одна
+// людина, а не структура, що бере на себе перевірку кандидаток. Хто не
+// хоче йти через агенцію — може шукати на інших майданчиках на свій
+// ризик, тут це свідомо не підтримується.
+const AGENCY_ONLY_SUBCATEGORIES = new Set([
+  "nannies",
+  "governess",
+  "tutors",
+]);
+
+export function requiresAgencyVerification(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return (
+    category === "education" &&
+    !!subcategory &&
+    AGENCY_ONLY_SUBCATEGORIES.has(subcategory)
+  );
 }

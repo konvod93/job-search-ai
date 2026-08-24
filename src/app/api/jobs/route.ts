@@ -8,7 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor } from "@/lib/job-options";
+import { getSubcategoriesFor, requiresAgencyVerification } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -299,6 +299,25 @@ export async function POST(request: Request) {
           {
             error:
               "Публікація вакансій у категорії \"Державні органи та служби\" вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+          },
+          { status: 403 },
+        );
+      }
+
+      // Няні/гувернери/репетитори — лише через верифіковані ЮРОСОБИ
+      // (агенції, що беруть на себе перевірку кандидаток: документи,
+      // мед- і психогляд). ФОП тут недостатньо, навіть верифікований —
+      // isLowTrust вже покриває ФОП незалежно від verificationStatus.
+      if (
+        requiresAgencyVerification(
+          parsed.data.category,
+          parsed.data.subcategory,
+        )
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Вакансії няні/гувернера/репетитора можуть публікувати лише верифіковані агенції (юридичні особи). Приватний найм фізособою чи ФОП тут не підтримується — для перевірки кандидаток (документи, мед- і психогляд) потрібна структура-посередник.",
           },
           { status: 403 },
         );
