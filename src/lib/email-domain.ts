@@ -26,3 +26,15 @@ export function isGenericEmailDomain(email: string): boolean {
   const domain = email.split("@")[1]?.toLowerCase();
   return domain ? GENERIC_EMAIL_DOMAINS.has(domain) : false;
 }
+
+/**
+ * Чи email на домені mil.gov.ua (Міноборони/ЗСУ). Додатковий сигнал
+ * довіри для адміна при верифікації військових вакансій — НЕ строга
+ * вимога: Нацгвардія, ССО, Нацполіція та інші силові структури не
+ * підпорядковані Міноборони й не використовують цей домен, тож його
+ * відсутність сама по собі нічого не означає.
+ */
+export function isMilGovUaDomain(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  return domain === "mil.gov.ua" || (domain?.endsWith(".mil.gov.ua") ?? false);
+}

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, users } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
-import { isGenericEmailDomain } from "@/lib/email-domain";
+import { isGenericEmailDomain, isMilGovUaDomain } from "@/lib/email-domain";
 import { EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
 import { detectBaitPattern } from "@/lib/bait-heuristic";
 import EmployerVerificationActions from "@/components/employer-verification-actions";
@@ -54,6 +54,7 @@ export default async function AdminEmployersPage() {
       <div className="flex flex-col gap-3">
         {pending.map(({ employer, email }) => {
           const generic = isGenericEmailDomain(email);
+          const isMilEmail = isMilGovUaDomain(email);
           return (
             <div
               key={employer.id}
@@ -94,6 +95,11 @@ export default async function AdminEmployersPage() {
                     ? "Пошта на безкоштовному сервісі"
                     : "Корпоративний домен пошти"}
                 </span>
+                {isMilEmail && (
+                  <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800">
+                    📧 Пошта на домені mil.gov.ua
+                  </span>
+                )}
                 {employer.website && (
                   <span className="rounded-full bg-neutral-100 px-2 py-1">
                     Сайт: {employer.website}
@@ -112,6 +118,19 @@ export default async function AdminEmployersPage() {
                   {employer.edrpou} (перевірити) ↗
                 </a>
               </p>
+
+              {employer.employerType === "military_security" && (
+                <p className="text-xs text-blue-800">
+                  ℹ️ Військова/силова структура: якщо це офіційний
+                  рекрутинговий центр — зазвичай достатньо стандартної
+                  перевірки ЄДРПОУ. Якщо публікує безпосередньо в/ч —
+                  попросіть додатковий підтвердний документ за підписом
+                  командира поза платформою (email/скан), перш ніж
+                  верифікувати. mil.gov.ua email — гарний сигнал, але його
+                  відсутність не означає підозру (Нацгвардія/ССО/Нацполіція
+                  не використовують цей домен).
+                </p>
+              )}
 
               {employer.companyDescription && (
                 <p className="text-sm text-neutral-600">

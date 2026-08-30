@@ -234,6 +234,16 @@ export async function PATCH(
         );
       }
 
+      if (effectiveCategory === "military") {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація військових вакансій вимагає верифікації роботодавця як юридичної особи (в/ч, підрозділ силових структур або офіційний рекрутинговий центр). Анонімні акаунти та ФОП тут не підтримуються.",
+          },
+          { status: 403 },
+        );
+      }
+
       if (requiresAgencyVerification(effectiveCategory, effectiveSubcategory)) {
         return NextResponse.json(
           {

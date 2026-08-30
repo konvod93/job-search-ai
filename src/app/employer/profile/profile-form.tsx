@@ -212,6 +212,18 @@ export default function EmployerProfileForm({
           ))}
         </select>
 
+        {employerType === "military_security" && (
+          <p className="rounded bg-blue-50 px-2 py-2 text-xs text-blue-800">
+            Якщо ви публікуєте вакансії від імені військової частини (не
+            рекрутингового центру) — після подачі ЄДРПОУ адмін може
+            попросити додатковий підтвердний документ за підписом командира
+            (окремо, поза платформою — вкажіть контакт для цього в описі
+            нижче). Корпоративна пошта на домені mil.gov.ua прискорює
+            перевірку, але не обов&apos;язкова — Нацгвардія/ССО/Нацполіція
+            цей домен не використовують.
+          </p>
+        )}
+
         <label htmlFor="edrpou" className="mt-2 text-sm text-neutral-600">
           {registrationNumberLabel(employerType || null)} (необов&apos;язково)
         </label>
