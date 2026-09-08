@@ -246,6 +246,43 @@ export const JOB_SUBCATEGORIES: Record<
       label: "Адміністратори / менеджери магазину",
     },
   ],
+  hospitality: [
+    {
+      value: "horeca_top_management",
+      label:
+        "Топ-менеджмент та управління (директор / генеральний менеджер готелю, керуючий рестораном, директор ресторану, операційний директор мережі, керівник напряму HoReCa, арт-директор / івент-менеджер)",
+    },
+    {
+      value: "horeca_kitchen_production",
+      label:
+        "Кухня та виробництво (шеф-кухар, су-шеф, кухар, шеф-кондитер / кондитер, піцайоло / сушист, завгосп / технолог, кухонний працівник / мийник посуду)",
+    },
+    {
+      value: "horeca_hall_service",
+      label:
+        "Ресторанний зал та обслуговування (адміністратор залу / метрдотель / хостес, офіціант / старший офіціант / раннер, сомельє, банкетний менеджер)",
+    },
+    {
+      value: "horeca_bar_coffee",
+      label:
+        "Бар та кав'ярні (шеф-бартендер / старший бармен, бармен, бариста, помічник бармена / барбек)",
+    },
+    {
+      value: "horeca_hotel_reception",
+      label:
+        "Готельний сервіс та ресепшн (портьє / адміністратор рецепції, нічний аудитор, консьєрж, швейцар / белбой, оператор бронювання)",
+    },
+    {
+      value: "horeca_housekeeping",
+      label:
+        "Господарська служба готелю (керівник господарської служби, старша покоївка / супервайзер, покоївка, прибиральник / праля / комірник, майстер з ремонту / технік готелю)",
+    },
+    {
+      value: "horeca_spa_wellness",
+      label:
+        "SPA, Wellness та додаткові послуги (керуючий SPA-комплексом, адміністратор SPA / фітнес-зони, масажист / естетист, рятувальник / інструктор басейну, аніматор)",
+    },
+  ],
   drivers: [
     { value: "personal_driver", label: "Особистий водій" },
     { value: "taxi_driver", label: "Таксист" },
@@ -420,4 +457,26 @@ export function requiresVerificationOnly(
   subcategory: string | null | undefined,
 ): boolean {
   return !!subcategory && VERIFIED_ONLY_PAIRS.has(`${category}:${subcategory}`);
+}
+
+// Пари category:subcategory, які по суті є державними органами/службами,
+// хоча самі живуть не в категорії "government" — санепідслужба та
+// Держпродспоживслужба зазначені в категорії "медицина" (бо кандидати
+// шукають їх поруч із мед. вакансіями), але як роботодавець це той самий
+// клас ризику, що й будь-яка держструктура: анонім/ФОП не повинен
+// публікувати вакансію нібито від імені держоргану. Гейт для них — той
+// самий, що і на всю категорію "government" (лише верифікована юрособа).
+const GOVERNMENT_AUTHORITY_PAIRS = new Set([
+  "medical:sanitary_epidemiological_service",
+]);
+
+export function isGovernmentAuthorityRole(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return (
+    category === "government" ||
+    (!!subcategory &&
+      GOVERNMENT_AUTHORITY_PAIRS.has(`${category}:${subcategory}`))
+  );
 }

@@ -8,7 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly } from "@/lib/job-options";
+import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -240,11 +240,11 @@ export async function PATCH(
         );
       }
 
-      if (effectiveCategory === "government") {
+      if (isGovernmentAuthorityRole(effectiveCategory, effectiveSubcategory)) {
         return NextResponse.json(
           {
             error:
-              "Публікація вакансій у категорії \"Державні органи та служби\" вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
+              "Публікація вакансій від імені державних органів та служб (зокрема державної санітарно-епідеміологічної служби та Держпродспоживслужби) вимагає верифікації роботодавця. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі, щоб опублікувати цю вакансію.",
           },
           { status: 403 },
         );
