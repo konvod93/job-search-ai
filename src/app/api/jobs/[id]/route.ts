@@ -8,7 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor, requiresAgencyVerification } from "@/lib/job-options";
+import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -201,16 +201,32 @@ export async function PATCH(
       updates.moderationCategory = null;
     }
 
+    const effectiveCategory = parsed.data.category ?? row.job.category;
+    const effectiveSubcategory =
+      parsed.data.subcategory !== undefined
+        ? parsed.data.subcategory
+        : row.job.subcategory;
+
+    // Ролі, де достатньо звичайної верифікації (ФОП з ліцензією — ок), але
+    // анонім/неверифікований — ні. Незалежно від isLowTrust нижче, бо
+    // верифікований ФОП взагалі не потрапляє в той блок.
+    if (
+      requiresVerificationOnly(effectiveCategory, effectiveSubcategory) &&
+      row.verificationStatus !== "verified"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Ця роль вимагає ліцензованої діяльності — публікувати можуть лише верифіковані роботодавці (юрособа або ФОП з відповідною ліцензією). Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі.",
+        },
+        { status: 403 },
+      );
+    }
+
     const isLowTrust =
       row.employerType === "fop" || row.verificationStatus !== "verified";
 
     if (isLowTrust) {
-      const effectiveCategory = parsed.data.category ?? row.job.category;
-      const effectiveSubcategory =
-        parsed.data.subcategory !== undefined
-          ? parsed.data.subcategory
-          : row.job.subcategory;
-
       if (
         effectiveCategory === "agriculture" &&
         effectiveSubcategory === "seasonal_harvest"

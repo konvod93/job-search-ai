@@ -21,7 +21,7 @@ export const JOB_CATEGORIES = [
   { value: "accounting", label: "Бухгалтерія та фінанси" },
   { value: "education", label: "Освіта та виховання" },
   { value: "military", label: "Військові професії" },
-  { value: "medical", label: "Медичні працівники" },
+  { value: "medical", label: "Медицина та охорона здоров'я" },
   { value: "veterinary_medicine", label: "Ветеринарна медицина" },
   { value: "hospitality", label: "Готельно-ресторанний сектор" },
   { value: "catering", label: "Громадське та корпоративне харчування" },
@@ -181,11 +181,25 @@ export const JOB_SUBCATEGORIES: Record<
     },
   ],
   medical: [
-    { value: "doctors", label: "Лікарі" },
+    {
+      value: "doctors",
+      label:
+        "Лікарі (терапевт, педіатр, кардіолог, хірург, стоматолог, лікар-лаборант, госпітальний епідеміолог)",
+    },
     {
       value: "mid_junior_medical",
       label:
-        "Середній та молодший медперсонал (фельдшери, медсестри/медбрати, акушери, санітари)",
+        "Середній та молодший персонал (фельдшери, акушери, медсестри/медбрати, лаборанти, санітари)",
+    },
+    {
+      value: "pharmacy",
+      label:
+        "Фармацевтика та аптечна справа (завідувач аптеки, провізор, фармацевт — лише з ліцензією)",
+    },
+    {
+      value: "sanitary_epidemiological_service",
+      label:
+        "Державна санітарно-епідеміологічна служба та Держпродспоживслужба",
     },
   ],
   education: [
@@ -391,4 +405,19 @@ export function requiresAgencyVerification(
   subcategory: string | null | undefined,
 ): boolean {
   return !!subcategory && AGENCY_ONLY_PAIRS.has(`${category}:${subcategory}`);
+}
+
+// Пари category:subcategory, де достатньо звичайної верифікації (ЄДРПОУ
+// або ІПН/РНОКПП) — на відміну від AGENCY_ONLY_PAIRS, тут ФОП дозволений,
+// якщо верифікований. Приклад: аптека цілком легально може бути ФОП з
+// ліцензією на фармацевтичну діяльність — тут ризик не "приватна особа
+// замість структури", а просто "потрібна підтверджена ліцензована
+// діяльність, а не анонім".
+const VERIFIED_ONLY_PAIRS = new Set(["medical:pharmacy"]);
+
+export function requiresVerificationOnly(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return !!subcategory && VERIFIED_ONLY_PAIRS.has(`${category}:${subcategory}`);
 }

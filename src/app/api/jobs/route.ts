@@ -8,7 +8,7 @@ import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
 import { checkTrustGate } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor, requiresAgencyVerification } from "@/lib/job-options";
+import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -248,6 +248,23 @@ export async function POST(request: Request) {
       status = "pending_review";
       moderationReason = moderation.reason;
       moderationCategory = moderation.category;
+    }
+
+    // Ролі, де достатньо звичайної верифікації (ФОП з ліцензією — ок), але
+    // анонім/неверифікований — ні. Перевіряється НЕЗАЛЕЖНО від isLowTrust
+    // нижче, бо верифікований ФОП взагалі не потрапляє в той блок — а тут
+    // саме такий кейс і треба зловити (verified required, FOP дозволений).
+    if (
+      requiresVerificationOnly(parsed.data.category, parsed.data.subcategory) &&
+      employerProfile.verificationStatus !== "verified"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Ця роль вимагає ліцензованої діяльності — публікувати можуть лише верифіковані роботодавці (юрособа або ФОП з відповідною ліцензією). Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі.",
+        },
+        { status: 403 },
+      );
     }
 
     // Trust-gate: додаткові жорсткі обмеження для роботодавців з низьким
