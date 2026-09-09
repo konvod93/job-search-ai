@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
-import { checkTrustGate } from "@/lib/trust-gate";
+import { checkTrustGate, checkBusinessActivityMismatch } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
 
@@ -163,6 +163,7 @@ export async function POST(request: Request) {
       id: employerProfiles.id,
       verificationStatus: employerProfiles.verificationStatus,
       employerType: employerProfiles.employerType,
+      businessActivity: employerProfiles.businessActivity,
       banned: employerProfiles.banned,
     })
     .from(employerProfiles)
@@ -374,6 +375,42 @@ export async function POST(request: Request) {
           },
           { status: 403 },
         );
+      }
+
+      // Верифікований ФОП (не заблокований вище) уже пройшов базову
+      // перевірку особи, але для цих ролей цього замало — фотограф-
+      // фрилансер, що знімає портфоліо моделі, відеоблогер, що наймає
+      // акторку, чи продюсер гурту, що шукає співачку — все це легітимний
+      // ФОП. А ФОП з видом діяльності "роздрібна торгівля", що раптом
+      // наймає акторку, — підозра на прикриття для вербування. Замість
+      // жорсткого блоку відправляємо на ручну модерацію адміну (не 403),
+      // якщо заявлений вид діяльності не узгоджується з роллю. Юрособ ця
+      // перевірка не стосується — там і так лише верифікована юрособа.
+      if (
+        trustGate?.isWomenEntertainmentRole &&
+        employerProfile.employerType === "fop"
+      ) {
+        const activity = employerProfile.businessActivity?.trim() ?? "";
+        const mismatch = activity
+          ? await checkBusinessActivityMismatch(
+              parsed.data.title,
+              parsed.data.description,
+              activity,
+            )
+          : null;
+
+        // Порожній activity, збій AI (null) чи явний мисметч — усі три
+        // трактуються як "потрібен ручний розгляд", навмисно не fail-open
+        // тут (див. коментар у trust-gate.ts).
+        if (!activity || mismatch === null || mismatch.isMismatch) {
+          status = "pending_review";
+          moderationCategory = "exploitation_risk";
+          moderationReason = !activity
+            ? `ФОП публікує вакансію "${trustGate.entertainmentReason}", але не вказав вид діяльності в профілі — потрібна ручна перевірка відповідності КВЕД.`
+            : mismatch === null
+              ? `ФОП публікує вакансію "${trustGate.entertainmentReason}" (заявлений вид діяльності: "${activity}") — автоматична перевірка відповідності не спрацювала, потрібен ручний розгляд.`
+              : `ФОП публікує вакансію "${trustGate.entertainmentReason}", але заявлений вид діяльності ("${activity}") їй не відповідає: ${mismatch.reason}`;
+        }
       }
 
       if (

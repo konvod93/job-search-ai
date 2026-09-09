@@ -36,6 +36,7 @@ const updateSchema = z
         "ЄДРПОУ/ІПН — 8-10 цифр",
       )
       .optional(),
+    businessActivity: z.string().max(255).optional(),
   })
   .refine(
     (data) => !(data.edrpou && data.edrpou !== "" && !data.employerType),
@@ -85,6 +86,7 @@ export async function PATCH(request: Request) {
   const [existing] = await db
     .select({
       edrpou: employerProfiles.edrpou,
+      businessActivity: employerProfiles.businessActivity,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
     })
@@ -106,6 +108,22 @@ export async function PATCH(request: Request) {
     } else if (newEdrpou !== existing.edrpou) {
       verificationStatus = "pending";
     }
+  }
+
+  // Так само й зміна заявленого виду діяльності знову відправляє профіль
+  // на розгляд — інакше вже верифікований ФОП міг би заднім числом
+  // вписати "фото/відео" під конкретну вакансію й обійти перехресну
+  // перевірку в checkBusinessActivityMismatch (trust-gate.ts довіряє
+  // цьому полю саме тому, що адмін звіряє його з реальним КВЕД під час
+  // верифікації). Не чіпаємо, якщо вище вже виставили "unverified" через
+  // очищення edrpou.
+  if (
+    parsed.data.businessActivity !== undefined &&
+    parsed.data.businessActivity.trim() !==
+      (existing.businessActivity ?? "") &&
+    verificationStatus !== "unverified"
+  ) {
+    verificationStatus = "pending";
   }
 
   const effectiveType = parsed.data.employerType ?? existing.employerType;

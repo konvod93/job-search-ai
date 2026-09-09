@@ -29,6 +29,7 @@ export default function EmployerProfileForm({
     phoneVisible: boolean;
     employerType: EmployerType | "";
     edrpou: string;
+    businessActivity: string;
   };
   verificationStatus: VerificationStatus;
   verificationNote: string | null;
@@ -49,6 +50,9 @@ export default function EmployerProfileForm({
     initialValues.employerType,
   );
   const [edrpou, setEdrpou] = useState(initialValues.edrpou);
+  const [businessActivity, setBusinessActivity] = useState(
+    initialValues.businessActivity,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -72,6 +76,7 @@ export default function EmployerProfileForm({
         phoneVisible,
         employerType: employerType || undefined,
         edrpou,
+        businessActivity,
       }),
     });
 
@@ -239,6 +244,30 @@ export default function EmployerProfileForm({
           схвалення на профілі з&apos;явиться бейдж &quot;Перевірено&quot; і
           зніметься ліміт на 1 вакансію. Без верифікації публікувати теж
           можна, але лише одну вакансію.
+        </p>
+
+        <label
+          htmlFor="businessActivity"
+          className="mt-2 text-sm text-neutral-600"
+        >
+          Вид діяльності (за КВЕД, коротко, необов&apos;язково)
+        </label>
+        <input
+          id="businessActivity"
+          value={businessActivity}
+          onChange={(e) => setBusinessActivity(e.target.value)}
+          placeholder="Наприклад: фотозйомка, створення відеоконтенту"
+          className="rounded border border-neutral-300 px-3 py-2"
+        />
+        <p className="text-xs text-neutral-500">
+          Адмін звіряє це з реальним реєстром при верифікації ЄДРПОУ/ІПН.
+          Для більшості вакансій це поле не впливає ні на що, але для ролей
+          на кшталт моделі/акторки/танцівниці/співачки — якщо ви ФОП, і
+          заявлений вид діяльності явно не пов&apos;язаний з такою роллю
+          (наприклад, &quot;роздрібна торгівля&quot; наймає акторку), така
+          вакансія піде на ручний розгляд адміну, а не одразу в публікацію.
+          Зміна цього поля після верифікації знову переводить профіль у
+          статус &quot;на розгляді&quot;.
         </p>
         <p
           className={`text-sm font-medium ${

@@ -45,6 +45,7 @@ export default async function EmployerProfilePage() {
           phoneVisible: profile.phoneVisible,
           employerType: profile.employerType ?? "",
           edrpou: profile.edrpou ?? "",
+          businessActivity: profile.businessActivity ?? "",
         }}
         verificationStatus={profile.verificationStatus}
         verificationNote={profile.verificationNote}

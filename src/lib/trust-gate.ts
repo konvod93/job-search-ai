@@ -163,3 +163,106 @@ export async function checkTrustGate(
     return null;
   }
 }
+
+/**
+ * Перевіряє, чи заявлений вид діяльності ФОП (те, що адмін звірив з КВЕД у
+ * реєстрі при верифікації, див. businessActivity в employerProfiles)
+ * правдоподібно узгоджується з "вразливою" роллю в шоу-бізнесі/медіа
+ * (модель/акторка/танцівниця/співачка тощо). Легітимні випадки —
+ * фотограф-фрилансер наймає модель для портфоліо, відеоблогер наймає
+ * акторку, продюсер гурту наймає співачку — усі мають businessActivity,
+ * що правдоподібно пояснює найм. Викликається лише коли:
+ * - trustGate.isWomenEntertainmentRole === true, і
+ * - роботодавець ФОП (для юрособ ця перевірка не потрібна — там достатньо
+ *   самої верифікації юрособи, підробити реєстрацію компанії набагато
+ *   важче, ніж вид діяльності ФОП).
+ *
+ * На відміну від checkTrustGate, тут навмисно НЕ "fail open": збій AI
+ * трактується як "потрібна ручна перевірка" (null → виклик коду сам
+ * вирішує показати pending_review), а відсутність businessActivity в
+ * профілі теж не дає автопублікації. Категорія ризику (можлива торгівля
+ * людьми) достатньо серйозна, щоб при невизначеності краще зайвий раз
+ * потурбувати адміна, ніж пропустити підозрілу вакансію напряму в
+ * публікацію.
+ */
+export type BusinessActivityMismatchResult = {
+  isMismatch: boolean;
+  reason: string | null;
+};
+
+const ACTIVITY_TOOL = {
+  name: "submit_activity_match_result",
+  description:
+    "Оцінює, чи заявлений вид діяльності ФОП правдоподібно узгоджується з роллю, на яку він наймає людину",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      is_mismatch: {
+        type: "boolean" as const,
+        description:
+          "true, якщо заявлений вид діяльності явно НЕ пов'язаний з наймом на цю роль (наприклад, 'роздрібна торгівля одягом' раптом наймає акторку)",
+      },
+      reason: {
+        type: "string" as const,
+        description:
+          "Коротке пояснення (до 20 слів), чому це не в'яжеться. Порожній рядок, якщо is_mismatch=false.",
+      },
+    },
+    required: ["is_mismatch", "reason"],
+  },
+};
+
+const ACTIVITY_SYSTEM_PROMPT = `Ти оцінюєш, чи заявлений вид діяльності ФОП (те, чим він офіційно займається за реєстром) правдоподібно пояснює, чому саме ця фізособа-підприємець наймає людину на цю конкретну роль у вакансії.
+
+Приклади ДОПУСТИМИХ збігів (is_mismatch=false), навіть якщо формулювання не дослівне — будь поблажливим до легітимного фрилансу й не вимагай точного збігу слів:
+- "Фотографія" / "Відеозйомка" / "Створення відеоконтенту" / "Блогінг" наймає модель для портфоліо чи зйомки
+- "Кінопродакшн" / "Артист-агентство" / "Організація видовищно-розважальних заходів" наймає акторку
+- "Звукозапис" / "Продюсування музичних заходів" / "Шоу-бізнес" наймає співачку
+- "Виконавське мистецтво" / "Хореографія" / "Організація подій" наймає танцівницю чи ведучу
+
+is_mismatch=true — лише коли вид діяльності про щось ЗОВСІМ інше і жодним чином правдоподібно не пояснює найм саме на цю роль (наприклад, "роздрібна торгівля продуктами", "вантажні перевезення", "ремонт взуття", "будівництво" наймає модель/акторку/танцівницю). Якщо є хоч якийсь правдоподібний зв'язок — це НЕ мисметч.`;
+
+export async function checkBusinessActivityMismatch(
+  title: string,
+  description: string,
+  businessActivity: string,
+): Promise<BusinessActivityMismatchResult | null> {
+  try {
+    const client = getAnthropicClient();
+
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 200,
+      system: ACTIVITY_SYSTEM_PROMPT,
+      tools: [ACTIVITY_TOOL],
+      tool_choice: { type: "tool", name: ACTIVITY_TOOL.name },
+      messages: [
+        {
+          role: "user",
+          content: `Заявлений вид діяльності ФОП: ${businessActivity}\n\nНазва вакансії: ${title}\n\nОпис: ${description}`,
+        },
+      ],
+    });
+
+    const toolUse = response.content.find(
+      (block) => block.type === "tool_use",
+    );
+
+    if (!toolUse || toolUse.type !== "tool_use") {
+      return null;
+    }
+
+    const input = toolUse.input as {
+      is_mismatch: boolean;
+      reason: string;
+    };
+
+    return {
+      isMismatch: input.is_mismatch,
+      reason: input.is_mismatch ? input.reason : null,
+    };
+  } catch (err) {
+    console.error("[trust-gate] business activity check failed:", err);
+    return null;
+  }
+}

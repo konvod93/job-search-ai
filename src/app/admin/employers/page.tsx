@@ -119,6 +119,34 @@ export default async function AdminEmployersPage() {
                 </a>
               </p>
 
+              {employer.employerType === "fop" && (
+                <p className="text-sm">
+                  Заявлений вид діяльності:{" "}
+                  {employer.businessActivity ? (
+                    <span className="font-medium">
+                      {employer.businessActivity}
+                    </span>
+                  ) : (
+                    <span className="text-amber-700">не вказано</span>
+                  )}{" "}
+                  —{" "}
+                  <a
+                    href={`https://opendatabot.ua/registry?q=${employer.edrpou ?? ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    звірити КВЕД у реєстрі ↗
+                  </a>
+                  <span className="block text-xs text-neutral-500">
+                    Для ролей на кшталт моделі/акторки/танцівниці/співачки
+                    невідповідний вид діяльності (наприклад, &quot;роздрібна
+                    торгівля&quot;) — сигнал ризику: вакансія автоматично
+                    йде на ручний розгляд, а не одразу в публікацію.
+                  </span>
+                </p>
+              )}
+
               {employer.employerType === "military_security" && (
                 <p className="text-xs text-blue-800">
                   ℹ️ Військова/силова структура: якщо це офіційний

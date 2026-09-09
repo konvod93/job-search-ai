@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
-import { checkTrustGate } from "@/lib/trust-gate";
+import { checkTrustGate, checkBusinessActivityMismatch } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
 
@@ -67,6 +67,7 @@ async function getJobWithOwner(jobId: string) {
       employerUserId: employerProfiles.userId,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
+      businessActivity: employerProfiles.businessActivity,
       banned: employerProfiles.banned,
     })
     .from(jobs)
@@ -292,6 +293,30 @@ export async function PATCH(
           },
           { status: 403 },
         );
+      }
+
+      // Верифікований ФОП (не заблокований вище) — див. детальний
+      // коментар у POST /api/jobs. Замість жорсткого блоку відправляємо
+      // на ручну модерацію, якщо заявлений вид діяльності не узгоджується
+      // з роллю.
+      if (
+        trustGate?.isWomenEntertainmentRole &&
+        row.employerType === "fop"
+      ) {
+        const activity = row.businessActivity?.trim() ?? "";
+        const mismatch = activity
+          ? await checkBusinessActivityMismatch(title, description, activity)
+          : null;
+
+        if (!activity || mismatch === null || mismatch.isMismatch) {
+          updates.status = "pending_review";
+          updates.moderationCategory = "exploitation_risk";
+          updates.moderationReason = !activity
+            ? `ФОП публікує вакансію "${trustGate.entertainmentReason}", але не вказав вид діяльності в профілі — потрібна ручна перевірка відповідності КВЕД.`
+            : mismatch === null
+              ? `ФОП публікує вакансію "${trustGate.entertainmentReason}" (заявлений вид діяльності: "${activity}") — автоматична перевірка відповідності не спрацювала, потрібен ручний розгляд.`
+              : `ФОП публікує вакансію "${trustGate.entertainmentReason}", але заявлений вид діяльності ("${activity}") їй не відповідає: ${mismatch.reason}`;
+        }
       }
 
       if (
