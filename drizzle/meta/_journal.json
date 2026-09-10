@@ -134,13 +134,6 @@
       "when": 1787394809522,
       "tag": "0018_steady_prowler",
       "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1788950642338,
-      "tag": "0019_brown_jack_flag",
-      "breakpoints": true
     }
   ]
 }

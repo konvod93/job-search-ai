@@ -6,7 +6,11 @@ import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
 import { moderateJobListing } from "@/lib/moderation";
-import { checkTrustGate, checkBusinessActivityMismatch } from "@/lib/trust-gate";
+import {
+  checkTrustGate,
+  checkBusinessActivityMismatch,
+  hasObviousEntertainmentRoleKeyword,
+} from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
 
@@ -273,6 +277,25 @@ export async function PATCH(
 
       const trustGate = await checkTrustGate(title, description);
 
+      // Див. детальний коментар у POST /api/jobs — детермінований
+      // keyword-фолбек, щоб недоступність AI не залишала цю категорію без
+      // жодного захисту.
+      const isWomenEntertainmentRole =
+        trustGate?.isWomenEntertainmentRole ??
+        hasObviousEntertainmentRoleKeyword(title, description);
+      const entertainmentReason =
+        trustGate?.entertainmentReason ??
+        (isWomenEntertainmentRole
+          ? "виявлено за ключовим словом у назві/описі (AI-перевірка була недоступна)"
+          : null);
+
+      if (trustGate === null) {
+        console.error(
+          "[jobs] checkTrustGate повернув null (AI недоступний) — перевірте ANTHROPIC_API_KEY. Fallback за ключовими словами для is_women_entertainment_role:",
+          isWomenEntertainmentRole,
+        );
+      }
+
       if (trustGate?.hasExternalContact) {
         return NextResponse.json(
           {
@@ -283,7 +306,7 @@ export async function PATCH(
       }
 
       if (
-        trustGate?.isWomenEntertainmentRole &&
+        isWomenEntertainmentRole &&
         row.verificationStatus !== "verified"
       ) {
         return NextResponse.json(
@@ -300,7 +323,7 @@ export async function PATCH(
       // на ручну модерацію, якщо заявлений вид діяльності не узгоджується
       // з роллю.
       if (
-        trustGate?.isWomenEntertainmentRole &&
+        isWomenEntertainmentRole &&
         row.employerType === "fop"
       ) {
         const activity = row.businessActivity?.trim() ?? "";
@@ -312,10 +335,10 @@ export async function PATCH(
           updates.status = "pending_review";
           updates.moderationCategory = "exploitation_risk";
           updates.moderationReason = !activity
-            ? `ФОП публікує вакансію "${trustGate.entertainmentReason}", але не вказав вид діяльності в профілі — потрібна ручна перевірка відповідності КВЕД.`
+            ? `ФОП публікує вакансію "${entertainmentReason}", але не вказав вид діяльності в профілі — потрібна ручна перевірка відповідності КВЕД.`
             : mismatch === null
-              ? `ФОП публікує вакансію "${trustGate.entertainmentReason}" (заявлений вид діяльності: "${activity}") — автоматична перевірка відповідності не спрацювала, потрібен ручний розгляд.`
-              : `ФОП публікує вакансію "${trustGate.entertainmentReason}", але заявлений вид діяльності ("${activity}") їй не відповідає: ${mismatch.reason}`;
+              ? `ФОП публікує вакансію "${entertainmentReason}" (заявлений вид діяльності: "${activity}") — автоматична перевірка відповідності не спрацювала, потрібен ручний розгляд.`
+              : `ФОП публікує вакансію "${entertainmentReason}", але заявлений вид діяльності ("${activity}") їй не відповідає: ${mismatch.reason}`;
         }
       }
 
