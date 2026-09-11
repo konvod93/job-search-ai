@@ -107,6 +107,14 @@ export default async function AdminJobsPage() {
         {pendingJobs.map(({ job, companyName, employerId }) => {
           const isExploitationRisk =
             job.moderationCategory === "exploitation_risk";
+          // Специфічний підтип exploitation_risk: наша перевірка
+          // відповідності виду діяльності ФОП ролі в шоу-бізнесі/медіа
+          // (checkBusinessActivityMismatch у trust-gate.ts). Усі три
+          // варіанти тексту причини, які генерує та перевірка, починаються
+          // з цього префіксу — детект без окремого поля в БД.
+          const isBusinessActivityMismatch =
+            isExploitationRisk &&
+            job.moderationReason?.startsWith("ФОП публікує вакансію");
           const baitPattern = baitPatternByEmployer.get(employerId);
           const showBaitWarning = (baitPattern?.count ?? 0) >= 3;
           return (
@@ -153,6 +161,19 @@ export default async function AdminJobsPage() {
                   }`}
                 >
                   ⚠ Причина: {job.moderationReason}
+                </p>
+              )}
+              {isBusinessActivityMismatch && (
+                <p className="rounded bg-red-100 p-2 text-xs text-red-900">
+                  💡 Формальна невідповідність КВЕД не завжди означає
+                  проблему — автоматика не бачить масштаб бізнесу. Мала
+                  кав&apos;ярня на кілька столиків навряд чи потребує
+                  співачку/модель, а от великий заклад з концертною
+                  програмою на 30+ осіб — цілком міг би, хоч і
+                  зареєстрований на ФОП (хоча в такому масштабі частіше
+                  зустрічається юрособа). Перш ніж відхиляти — гляньте на
+                  сайт/сторінку закладу чи зв&apos;яжіться з роботодавцем
+                  для уточнення масштабу й контексту вакансії.
                 </p>
               )}
               <p className="whitespace-pre-wrap text-sm text-neutral-700">
