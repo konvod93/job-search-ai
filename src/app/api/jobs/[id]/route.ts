@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -200,6 +200,19 @@ export async function PATCH(
       updates.status = "pending_review";
       updates.moderationReason = moderation.reason;
       updates.moderationCategory = moderation.category;
+    } else if (
+      moderation === null &&
+      hasObviousExploitationRiskPattern(title, description)
+    ) {
+      // AI-модерація впала — див. коментар біля
+      // hasObviousExploitationRiskPattern у moderation.ts.
+      console.error(
+        "[jobs] moderateJobListing повернув null (AI недоступний) — спрацював keyword-фолбек exploitation_risk.",
+      );
+      updates.status = "pending_review";
+      updates.moderationCategory = "exploitation_risk";
+      updates.moderationReason =
+        "Виявлено за ключовими словами (віковий діапазон + вимога до зовнішності без професійного обґрунтування) — AI-модерація була недоступна, потрібен ручний розгляд.";
     } else if (moderation) {
       // Пройшло перевірку — прибираємо стару причину флагу, якщо була
       updates.moderationReason = null;

@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -253,6 +253,24 @@ export async function POST(request: Request) {
       status = "pending_review";
       moderationReason = moderation.reason;
       moderationCategory = moderation.category;
+    } else if (
+      moderation === null &&
+      hasObviousExploitationRiskPattern(
+        parsed.data.title,
+        parsed.data.description,
+      )
+    ) {
+      // AI-модерація впала (немає ANTHROPIC_API_KEY, мережа тощо) — не
+      // залишаємо найнебезпечніший патерн (вік+зовнішність без
+      // професійного обґрунтування) зовсім без захисту. Див. коментар
+      // біля hasObviousExploitationRiskPattern у moderation.ts.
+      console.error(
+        "[jobs] moderateJobListing повернув null (AI недоступний) — спрацював keyword-фолбек exploitation_risk.",
+      );
+      status = "pending_review";
+      moderationCategory = "exploitation_risk";
+      moderationReason =
+        "Виявлено за ключовими словами (віковий діапазон + вимога до зовнішності без професійного обґрунтування) — AI-модерація була недоступна, потрібен ручний розгляд.";
     }
 
     // Ролі, де достатньо звичайної верифікації (ФОП з ліцензією — ок), але
