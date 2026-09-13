@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   EMPLOYMENT_TYPES,
   JOB_CATEGORIES,
   getSubcategoriesFor,
+  suggestsCivilianCateringInMilitaryCategory,
 } from "@/lib/job-options";
 
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]["value"];
@@ -87,6 +88,18 @@ export default function JobForm({
   }
 
   const availableSubcategories = getSubcategoriesFor(category);
+
+  // Не блокуюча підказка: військова частина могла помилково вибрати
+  // категорію "Військові професії" для цивільної посади харчоблоку/їдальні
+  // в тиловій установі (шпиталь, навчальний заклад) — там нерідко працюють
+  // вільнонаймані цивільні, а не військовослужбовці. Рішення лишається за
+  // роботодавцем, це лише підказка.
+  const showMilitaryCateringHint = useMemo(
+    () =>
+      category === "military" &&
+      suggestsCivilianCateringInMilitaryCategory(title, description),
+    [category, title, description],
+  );
   const [employmentType, setEmploymentType] = useState<EmploymentType>(
     initialValues?.employmentType ?? EMPTY_VALUES.employmentType,
   );
@@ -215,6 +228,19 @@ export default function JobForm({
             ))}
           </select>
         </div>
+
+        {showMilitaryCateringHint && (
+          <p className="rounded bg-amber-50 p-2 text-xs text-amber-900">
+            💡 Схоже, це вакансія для харчоблоку/їдальні в тиловій установі
+            (шпиталь, навчальний заклад). Якщо ця посада — для
+            військовослужбовця (наприклад, у складі бойового підрозділу),
+            залиште категорію &quot;Військові професії&quot;. Але якщо це
+            цивільна вільнонаймана посада (не військовослужбовець) — оберіть
+            категорію &quot;Громадське та корпоративне харчування&quot; та
+            підкатегорію &quot;Харчування у медичних та лікувальних
+            закладах&quot; чи &quot;Харчування в навчальних закладах&quot;.
+          </p>
+        )}
 
         {availableSubcategories.length > 0 && (
           <div className="flex flex-col gap-1">

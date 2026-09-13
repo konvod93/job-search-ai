@@ -518,3 +518,47 @@ export function isGovernmentAuthorityRole(
       GOVERNMENT_AUTHORITY_PAIRS.has(`${category}:${subcategory}`))
   );
 }
+
+// М'яка (не блокуюча) підказка для форми: якщо роботодавець публікує
+// вакансію в категорії "Військові професії", але текст описує типову
+// цивільну роль харчоблоку/їдальні в тиловій установі (шпиталь, навчальний
+// заклад) — це часто вільнонаймана цивільна посада, а не військовослужбовець
+// (на відміну від "військового кухаря" в бойовому підрозділі, який завжди
+// в/с — див. підкатегорію technical_soldier). Ми не можемо і не повинні
+// вирішувати це автоматично (в/ч сама знає, хто саме їй потрібен), тому
+// лише підказуємо — рішення й вибір категорії лишається за роботодавцем.
+const MILITARY_CATERING_INSTITUTION_KEYWORDS = [
+  "шпиталь",
+  "госпіталь",
+  "лазарет",
+  "навчальн",
+  "коледж",
+  "ліцей",
+  "академі",
+  "училищ",
+  "інститут",
+];
+
+const CATERING_ROLE_KEYWORDS = [
+  "кухар",
+  "кухон",
+  "харчоблок",
+  "їдальн",
+  "буфет",
+  "роздавальник",
+  "дієт",
+];
+
+export function suggestsCivilianCateringInMilitaryCategory(
+  title: string,
+  description: string,
+): boolean {
+  const text = `${title} ${description}`.toLowerCase();
+  const hasInstitutionKeyword = MILITARY_CATERING_INSTITUTION_KEYWORDS.some(
+    (kw) => text.includes(kw),
+  );
+  const hasCateringRoleKeyword = CATERING_ROLE_KEYWORDS.some((kw) =>
+    text.includes(kw),
+  );
+  return hasInstitutionKeyword && hasCateringRoleKeyword;
+}
