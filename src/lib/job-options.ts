@@ -9,6 +9,38 @@ export const EMPLOYMENT_TYPES = [
 export const EMPLOYMENT_TYPE_LABELS: Record<string, string> =
   Object.fromEntries(EMPLOYMENT_TYPES.map((t) => [t.value, t.label]));
 
+// Рівень СТО — лише для category="auto_service". Короткий label для
+// бейджа на картці вакансії, довший — для селектора у формі й підказки
+// кандидату, чого очікувати (сертифікація, вік/бренд авто, вимоги).
+export const SERVICE_CENTER_TIERS = [
+  {
+    value: "dealer",
+    label: "Офіційний дилерський центр",
+    badgeLabel: "Дилерський центр",
+    hint: "Один бренд, авто зазвичай не старіші 7-10 років, високі вимоги до персоналу, обов'язкова сертифікація виробника.",
+  },
+  {
+    value: "network",
+    label: "Мережева мультибрендова СТО",
+    badgeLabel: "Мережева СТО",
+    hint: "Іномарки будь-якого віку та бренду, сучасне обладнання, високі вимоги до досвіду й кваліфікації.",
+  },
+  {
+    value: "private",
+    label: "Приватна локальна СТО",
+    badgeLabel: "Приватна СТО",
+    hint: "Будь-які авто (включно з вітчизняними/старими), нерідко вузька спеціалізація, сертифікати не обов'язкові — головне досвід.",
+  },
+] as const;
+
+export const SERVICE_CENTER_TIER_LABELS: Record<string, string> =
+  Object.fromEntries(SERVICE_CENTER_TIERS.map((t) => [t.value, t.label]));
+
+export const SERVICE_CENTER_TIER_BADGE_LABELS: Record<string, string> =
+  Object.fromEntries(
+    SERVICE_CENTER_TIERS.map((t) => [t.value, t.badgeLabel]),
+  );
+
 export const JOB_CATEGORIES = [
   { value: "it", label: "IT" },
   { value: "construction", label: "Будівництво та ремонт" },

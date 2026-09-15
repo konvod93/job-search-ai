@@ -7,6 +7,8 @@ import {
   EMPLOYMENT_TYPE_LABELS,
   JOB_CATEGORIES,
   JOB_CATEGORY_LABELS,
+  SERVICE_CENTER_TIERS,
+  SERVICE_CENTER_TIER_BADGE_LABELS,
   subcategoryLabel,
 } from "@/lib/job-options";
 
@@ -15,6 +17,7 @@ type SearchParams = Promise<{
   location?: string;
   employmentType?: string;
   category?: string;
+  serviceCenterTier?: string;
 }>;
 
 export default async function JobsPage({
@@ -22,7 +25,8 @@ export default async function JobsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { q, location, employmentType, category } = await searchParams;
+  const { q, location, employmentType, category, serviceCenterTier } =
+    await searchParams;
 
   const filters = [eq(jobs.status, "published")];
 
@@ -48,6 +52,21 @@ export default async function JobsPage({
         eq(jobs.category, category as (typeof JOB_CATEGORIES)[number]["value"]),
         sql`${jobs.crossListedCategories} @> ${JSON.stringify([category])}::jsonb`,
       )!,
+    );
+  }
+  // Фільтр за рівнем СТО має сенс лише в межах категорії auto_service —
+  // не застосовуємо його, якщо категорія не auto_service (щоб не
+  // приховати абсолютно всі результати через збіг значення з іншим полем).
+  if (
+    category === "auto_service" &&
+    serviceCenterTier &&
+    SERVICE_CENTER_TIERS.some((t) => t.value === serviceCenterTier)
+  ) {
+    filters.push(
+      eq(
+        jobs.serviceCenterTier,
+        serviceCenterTier as (typeof SERVICE_CENTER_TIERS)[number]["value"],
+      ),
     );
   }
 
@@ -101,6 +120,20 @@ export default async function JobsPage({
             </option>
           ))}
         </select>
+        {category === "auto_service" && (
+          <select
+            name="serviceCenterTier"
+            defaultValue={serviceCenterTier ?? ""}
+            className="rounded border border-neutral-300 px-3 py-2"
+          >
+            <option value="">Будь-який рівень СТО</option>
+            {SERVICE_CENTER_TIERS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="submit"
           className="rounded bg-neutral-900 px-4 py-2 text-white"
@@ -133,11 +166,18 @@ export default async function JobsPage({
                 ? ` · ${job.salaryMin ?? "?"}–${job.salaryMax ?? "?"}`
                 : ""}
             </p>
-            <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-              {JOB_CATEGORY_LABELS[job.category]}
-              {subcategoryLabel(job.category, job.subcategory) &&
-                ` · ${subcategoryLabel(job.category, job.subcategory)}`}
-            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                {JOB_CATEGORY_LABELS[job.category]}
+                {subcategoryLabel(job.category, job.subcategory) &&
+                  ` · ${subcategoryLabel(job.category, job.subcategory)}`}
+              </span>
+              {job.serviceCenterTier && (
+                <span className="w-fit rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                  {SERVICE_CENTER_TIER_BADGE_LABELS[job.serviceCenterTier]}
+                </span>
+              )}
+            </div>
             {job.crossListedCategories && job.crossListedCategories.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {job.crossListedCategories.map((c) => (

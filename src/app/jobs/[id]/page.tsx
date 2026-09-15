@@ -4,7 +4,12 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { applications, candidateProfiles, employerProfiles, jobs } from "@/db/schema";
-import { EMPLOYMENT_TYPE_LABELS, JOB_CATEGORY_LABELS, subcategoryLabel } from "@/lib/job-options";
+import {
+  EMPLOYMENT_TYPE_LABELS,
+  JOB_CATEGORY_LABELS,
+  SERVICE_CENTER_TIER_LABELS,
+  subcategoryLabel,
+} from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
 import ReportButton from "@/components/report-button";
 import SafetyTip from "@/components/safety-tip";
@@ -115,6 +120,11 @@ export default async function JobDetailPage({
         {subcategoryLabel(job.category, job.subcategory) && (
           <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
             {subcategoryLabel(job.category, job.subcategory)}
+          </span>
+        )}
+        {job.serviceCenterTier && (
+          <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-800">
+            {SERVICE_CENTER_TIER_LABELS[job.serviceCenterTier]}
           </span>
         )}
         <span className="rounded-full bg-neutral-100 px-3 py-1">

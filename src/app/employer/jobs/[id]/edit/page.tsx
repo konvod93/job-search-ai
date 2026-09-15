@@ -46,6 +46,7 @@ export default async function EditJobPage({
         skillsInput: (job.skillsRequired ?? []).join(", "),
         status:
           job.status === "pending_review" ? "draft" : job.status,
+        serviceCenterTier: job.serviceCenterTier ?? "",
       }}
     />
   );

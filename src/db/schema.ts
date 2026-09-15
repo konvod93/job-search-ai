@@ -107,6 +107,17 @@ export const employerTypeEnum = pgEnum("employer_type", [
   "fop", // ФОП — верифікується по ІПН/РНОКПП, а не ЄДРПОУ
 ]);
 
+// Рівень СТО — лише для category="auto_service". Взаємовиключні (одна СТО
+// не буває одночасно дилерським центром і приватним гаражем), тому enum з
+// одним значенням, а не набір чекбоксів. Впливає на очікування кандидата
+// (сертифікація, вік/бренд авто, вимоги), тому показується бейджем на
+// вакансії й дає окремий фільтр на сторінці пошуку саме в цій категорії.
+export const serviceCenterTierEnum = pgEnum("service_center_tier", [
+  "dealer", // офіційний дилерський сервісний центр (один бренд, високі вимоги, сертифікація)
+  "network", // мережева незалежна мультибрендова СТО (іномарки будь-якого віку, сучасне обладнання)
+  "private", // локальна приватна СТО (будь-які авто, без вимог до сертифікатів, лише досвід)
+]);
+
 // ---------- Tables ----------
 
 export const users = pgTable("users", {
@@ -213,6 +224,10 @@ export const jobs = pgTable("jobs", {
   location: varchar("location", { length: 255 }),
   category: jobCategoryEnum("category").notNull().default("other"),
   subcategory: varchar("subcategory", { length: 50 }),
+  // Лише для category="auto_service" — див. коментар біля
+  // serviceCenterTierEnum. null для всіх інших категорій і для СТО, які
+  // не вказали рівень (необов'язкове поле).
+  serviceCenterTier: serviceCenterTierEnum("service_center_tier"),
   // Додаткові категорії, в яких ця вакансія теж має показуватись (окрім
   // основної category) — наприклад, "кур'єр зі своїм авто" логічно
   // цікавить і тих, хто шукає в "Логістика", і тих, хто в "Водії кат.

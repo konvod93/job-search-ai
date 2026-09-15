@@ -1,6 +1,6 @@
 {
-  "id": "1effbdaa-d104-416b-8519-096ba2c010de",
-  "prevId": "7e408fc0-717f-401e-9d53-dd01dec804e7",
+  "id": "cac132f3-21d4-4831-8882-a4c893a0a987",
+  "prevId": "1effbdaa-d104-416b-8519-096ba2c010de",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -443,6 +443,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "service_center_tier": {
+          "name": "service_center_tier",
+          "type": "service_center_tier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
         "cross_listed_categories": {
           "name": "cross_listed_categories",
           "type": "jsonb",
@@ -822,6 +829,15 @@
         "pending",
         "reviewed",
         "dismissed"
+      ]
+    },
+    "public.service_center_tier": {
+      "name": "service_center_tier",
+      "schema": "public",
+      "values": [
+        "dealer",
+        "network",
+        "private"
       ]
     },
     "public.user_role": {

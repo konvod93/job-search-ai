@@ -62,6 +62,10 @@ const updateJobSchema = z.object({
   salaryMax: z.number().int().nonnegative().optional(),
   skillsRequired: z.array(z.string()).optional(),
   status: z.enum(["draft", "published", "closed"]).optional(),
+  serviceCenterTier: z
+    .enum(["dealer", "network", "private"])
+    .nullable()
+    .optional(),
 });
 
 async function getJobWithOwner(jobId: string) {
@@ -150,6 +154,19 @@ export async function PATCH(
     }
   }
 
+  if (parsed.data.serviceCenterTier) {
+    const effectiveCategory = parsed.data.category ?? row.job.category;
+    if (effectiveCategory !== "auto_service") {
+      return NextResponse.json(
+        {
+          error:
+            'Рівень СТО можна вказати лише для категорії "Автосервіс / СТО"',
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // Вакансія опублікована/публікується зараз → перевіряємо AI-модерацією
   // (використовуючи вже оновлений текст, якщо title/description змінились
   // у цьому запиті). "Fail open" при збої AI — не блокуємо employer'а.
@@ -174,7 +191,21 @@ export async function PATCH(
       | "exploitation_risk"
       | "other"
       | null;
+    serviceCenterTier?: "dealer" | "network" | "private" | null;
   } = { ...parsed.data };
+
+  // Захист від "осиротілого" значення: якщо категорію змінили на щось
+  // інше за auto_service, а serviceCenterTier у цьому запиті явно не
+  // передавали (клієнт з іншим кодом міг цього не врахувати) — все одно
+  // чистимо застаріле значення, а не лишаємо його висіти в іншій категорії.
+  if (
+    updates.category &&
+    updates.category !== "auto_service" &&
+    parsed.data.serviceCenterTier === undefined &&
+    row.job.serviceCenterTier
+  ) {
+    updates.serviceCenterTier = null;
+  }
 
   if (targetStatus === "published") {
     const title = parsed.data.title ?? row.job.title;

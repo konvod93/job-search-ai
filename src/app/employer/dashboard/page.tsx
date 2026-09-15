@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
-import { JOB_CATEGORY_LABELS, subcategoryLabel } from "@/lib/job-options";
+import { JOB_CATEGORY_LABELS, SERVICE_CENTER_TIER_LABELS, subcategoryLabel } from "@/lib/job-options";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Чернетка",
@@ -102,6 +102,8 @@ export default async function EmployerDashboard() {
                 {JOB_CATEGORY_LABELS[job.category]}
                 {subcategoryLabel(job.category, job.subcategory) &&
                   ` (${subcategoryLabel(job.category, job.subcategory)})`}
+                {job.serviceCenterTier &&
+                  ` · ${SERVICE_CENTER_TIER_LABELS[job.serviceCenterTier]}`}
               </p>
               {job.status === "pending_review" && job.moderationReason && (
                 <p className="mt-1 text-xs text-amber-700">

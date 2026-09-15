@@ -67,6 +67,7 @@ const createJobSchema = z
     salaryMax: z.number().int().nonnegative().optional(),
     skillsRequired: z.array(z.string()).optional(),
     status: z.enum(["draft", "published"]).default("draft"),
+    serviceCenterTier: z.enum(["dealer", "network", "private"]).optional(),
   })
   .refine(
     (data) => {
@@ -79,7 +80,14 @@ const createJobSchema = z
   .refine((data) => !data.crossListedCategories?.includes(data.category), {
     message: "Додаткова категорія не може дублювати основну",
     path: ["crossListedCategories"],
-  });
+  })
+  .refine(
+    (data) => !data.serviceCenterTier || data.category === "auto_service",
+    {
+      message: "Рівень СТО можна вказати лише для категорії \"Автосервіс / СТО\"",
+      path: ["serviceCenterTier"],
+    },
+  );
 
 // GET /api/jobs?q=...&location=...&employmentType=...&category=...
 // Публічний перегляд — тільки опубліковані вакансії
@@ -503,6 +511,7 @@ export async function POST(request: Request) {
       status,
       moderationReason,
       moderationCategory,
+      serviceCenterTier: parsed.data.serviceCenterTier,
     })
     .returning();
 

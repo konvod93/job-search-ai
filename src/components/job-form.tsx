@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import {
   EMPLOYMENT_TYPES,
   JOB_CATEGORIES,
+  SERVICE_CENTER_TIERS,
   getSubcategoriesFor,
   suggestsCivilianCateringInMilitaryCategory,
 } from "@/lib/job-options";
 
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]["value"];
 type Category = (typeof JOB_CATEGORIES)[number]["value"];
+type ServiceCenterTier = (typeof SERVICE_CENTER_TIERS)[number]["value"];
 type Status = "draft" | "published" | "closed";
 
 export type JobFormValues = {
@@ -25,6 +27,7 @@ export type JobFormValues = {
   salaryMax: string;
   skillsInput: string;
   status: Status;
+  serviceCenterTier: ServiceCenterTier | "";
 };
 
 const EMPTY_VALUES: JobFormValues = {
@@ -39,6 +42,7 @@ const EMPTY_VALUES: JobFormValues = {
   salaryMax: "",
   skillsInput: "",
   status: "draft",
+  serviceCenterTier: "",
 };
 
 export default function JobForm({
@@ -85,6 +89,10 @@ export default function JobForm({
     setSubcategory("");
     // Основна категорія не може одночасно бути й додатковою
     setCrossListedCategories((prev) => prev.filter((c) => c !== value));
+    // Рівень СТО стосується лише auto_service — при зміні категорії скидаємо
+    if (value !== "auto_service") {
+      setServiceCenterTier("");
+    }
   }
 
   const availableSubcategories = getSubcategoriesFor(category);
@@ -112,6 +120,9 @@ export default function JobForm({
   const [skillsInput, setSkillsInput] = useState(
     initialValues?.skillsInput ?? EMPTY_VALUES.skillsInput,
   );
+  const [serviceCenterTier, setServiceCenterTier] = useState<
+    ServiceCenterTier | ""
+  >(initialValues?.serviceCenterTier ?? EMPTY_VALUES.serviceCenterTier);
   const [status, setStatus] = useState<Status>(
     initialValues?.status ?? EMPTY_VALUES.status,
   );
@@ -144,6 +155,12 @@ export default function JobForm({
         salaryMax: salaryMax ? Number(salaryMax) : undefined,
         skillsRequired,
         status,
+        serviceCenterTier:
+          category === "auto_service" && serviceCenterTier
+            ? serviceCenterTier
+            : isEdit
+              ? null
+              : undefined,
       }),
     });
 
@@ -228,6 +245,48 @@ export default function JobForm({
             ))}
           </select>
         </div>
+
+        {category === "auto_service" && (
+          <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
+            <span className="text-sm font-medium text-neutral-700">
+              Рівень СТО (необов&apos;язково)
+            </span>
+            <p className="text-xs text-neutral-500">
+              Допомагає кандидату одразу зрозуміти вимоги — покажеться
+              бейджем на вакансії й дасть кандидатам фільтр у пошуку.
+            </p>
+            {SERVICE_CENTER_TIERS.map((tier) => (
+              <label
+                key={tier.value}
+                className="flex items-start gap-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="serviceCenterTier"
+                  value={tier.value}
+                  checked={serviceCenterTier === tier.value}
+                  onChange={() => setServiceCenterTier(tier.value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-medium">{tier.label}</span>
+                  <span className="block text-xs text-neutral-500">
+                    {tier.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+            {serviceCenterTier && (
+              <button
+                type="button"
+                onClick={() => setServiceCenterTier("")}
+                className="self-start text-xs text-neutral-500 underline"
+              >
+                Не вказувати
+              </button>
+            )}
+          </div>
+        )}
 
         {showMilitaryCateringHint && (
           <p className="rounded bg-amber-50 p-2 text-xs text-amber-900">
