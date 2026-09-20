@@ -30,6 +30,7 @@ export default function EmployerProfileForm({
     employerType: EmployerType | "";
     edrpou: string;
     businessActivity: string;
+    foreignEmploymentLicenseNumber: string;
   };
   verificationStatus: VerificationStatus;
   verificationNote: string | null;
@@ -53,6 +54,8 @@ export default function EmployerProfileForm({
   const [businessActivity, setBusinessActivity] = useState(
     initialValues.businessActivity,
   );
+  const [foreignEmploymentLicenseNumber, setForeignEmploymentLicenseNumber] =
+    useState(initialValues.foreignEmploymentLicenseNumber);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -77,6 +80,7 @@ export default function EmployerProfileForm({
         employerType: employerType || undefined,
         edrpou,
         businessActivity,
+        foreignEmploymentLicenseNumber,
       }),
     });
 
@@ -266,8 +270,33 @@ export default function EmployerProfileForm({
           заявлений вид діяльності явно не пов&apos;язаний з такою роллю
           (наприклад, &quot;роздрібна торгівля&quot; наймає акторку), така
           вакансія піде на ручний розгляд адміну, а не одразу в публікацію.
-          Зміна цього поля після верифікації знову переводить профіль у
-          статус &quot;на розгляді&quot;.
+          Так само для промислового рибальства (ФОП) — вид діяльності має
+          підтверджувати ліцензований вилов риби (наприклад, &quot;рибальство&quot;,
+          &quot;рибне господарство&quot;, &quot;аквакультура&quot;), інакше
+          публікація заблокована. Зміна цього поля після верифікації знову
+          переводить профіль у статус &quot;на розгляді&quot;.
+        </p>
+
+        <label
+          htmlFor="foreignEmploymentLicenseNumber"
+          className="mt-2 text-sm text-neutral-600"
+        >
+          Номер ліцензії Мінекономіки на посередництво у працевлаштуванні за
+          кордоном (необов&apos;язково)
+        </label>
+        <input
+          id="foreignEmploymentLicenseNumber"
+          value={foreignEmploymentLicenseNumber}
+          onChange={(e) => setForeignEmploymentLicenseNumber(e.target.value)}
+          placeholder="Номер ліцензії"
+          className="rounded border border-neutral-300 px-3 py-2"
+        />
+        <p className="text-xs text-neutral-500">
+          Потрібен лише якщо плануєте публікувати вакансії на судна під
+          іноземним прапором (категорія &quot;Морський та річковий
+          транспорт&quot;, крюїнг за кордон) — без ліцензії такі вакансії
+          публікувати не можна. Адмін звіряє номер при верифікації; зміна
+          поля також знову переводить профіль у статус &quot;на розгляді&quot;.
         </p>
         <p
           className={`text-sm font-medium ${

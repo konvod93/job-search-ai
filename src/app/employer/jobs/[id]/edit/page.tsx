@@ -47,6 +47,8 @@ export default async function EditJobPage({
         status:
           job.status === "pending_review" ? "draft" : job.status,
         serviceCenterTier: job.serviceCenterTier ?? "",
+        fleetType: job.fleetType ?? "",
+        isForeignVesselCrewing: job.isForeignVesselCrewing,
       }}
     />
   );

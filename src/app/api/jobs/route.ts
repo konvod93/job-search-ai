@@ -10,9 +10,16 @@ import {
   checkTrustGate,
   checkBusinessActivityMismatch,
   hasObviousEntertainmentRoleKeyword,
+  matchesLicensedFishingActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
+import {
+  getSubcategoriesFor,
+  requiresAgencyVerification,
+  requiresVerificationOnly,
+  isGovernmentAuthorityRole,
+  isFishingSubcategory,
+} from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -68,6 +75,10 @@ const createJobSchema = z
     skillsRequired: z.array(z.string()).optional(),
     status: z.enum(["draft", "published"]).default("draft"),
     serviceCenterTier: z.enum(["dealer", "network", "private"]).optional(),
+    fleetType: z
+      .enum(["river", "coastal_cabotage", "ocean_going", "cruise_passenger"])
+      .optional(),
+    isForeignVesselCrewing: z.boolean().optional(),
   })
   .refine(
     (data) => {
@@ -86,6 +97,23 @@ const createJobSchema = z
     {
       message: "Рівень СТО можна вказати лише для категорії \"Автосервіс / СТО\"",
       path: ["serviceCenterTier"],
+    },
+  )
+  .refine(
+    (data) => !data.fleetType || data.category === "maritime_transport",
+    {
+      message:
+        'Тип флоту можна вказати лише для категорії "Морський та річковий транспорт"',
+      path: ["fleetType"],
+    },
+  )
+  .refine(
+    (data) =>
+      !data.isForeignVesselCrewing || data.category === "maritime_transport",
+    {
+      message:
+        'Позначку "судно під іноземним прапором" можна вказати лише для категорії "Морський та річковий транспорт"',
+      path: ["isForeignVesselCrewing"],
     },
   );
 
@@ -176,6 +204,8 @@ export async function POST(request: Request) {
       verificationStatus: employerProfiles.verificationStatus,
       employerType: employerProfiles.employerType,
       businessActivity: employerProfiles.businessActivity,
+      foreignEmploymentLicenseNumber:
+        employerProfiles.foreignEmploymentLicenseNumber,
       banned: employerProfiles.banned,
     })
     .from(employerProfiles)
@@ -298,6 +328,25 @@ export async function POST(request: Request) {
       );
     }
 
+    // Крюїнг за кордон — юридична вимога, а не питання довіри: навіть
+    // повністю верифікована юрособа не має права посередництва у
+    // працевлаштуванні моряків на судна під іноземним прапором без
+    // ліцензії Мінекономіки. Тому перевірка стоїть окремо від isLowTrust
+    // нижче й застосовується до БУДЬ-ЯКОГО роботодавця.
+    if (
+      parsed.data.category === "maritime_transport" &&
+      parsed.data.isForeignVesselCrewing &&
+      !employerProfile.foreignEmploymentLicenseNumber?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Публікація вакансій на судна під іноземним прапором (крюїнг за кордон) вимагає ліцензії Мінекономіки на посередництво у працевлаштуванні за кордоном. Вкажіть номер ліцензії у профілі роботодавця.',
+        },
+        { status: 403 },
+      );
+    }
+
     // Trust-gate: додаткові жорсткі обмеження для роботодавців з низьким
     // рівнем довіри (ФОП незалежно від верифікації, або будь-хто
     // неверифікований). На відміну від moderateJobListing вище, це не
@@ -374,10 +423,40 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, якої в ФОП не буває), або підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо). Приватний найм фізособою чи ФОП тут не підтримується.",
+              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, якої в ФОП не буває), підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо), або те, що роботодавець — судно/порт (палубна, машинна команда, судновий сервіс, портове господарство — судновласником чи портовим оператором не буває ФОП). Приватний найм фізособою чи ФОП тут не підтримується.",
           },
           { status: 403 },
         );
+      }
+
+      // Промислове рибальство — єдиний виняток у категорії
+      // maritime_transport, де ФОП дозволені (решта підкатегорій — лише
+      // юрособи, requiresAgencyVerification вище). Але верифікація тут
+      // має конкретно підтверджувати ліцензований вилов риби, інакше
+      // неверифікований чи "не той" ФОП може виявитись браконьєром.
+      if (
+        isFishingSubcategory(parsed.data.category, parsed.data.subcategory) &&
+        employerProfile.employerType === "fop"
+      ) {
+        if (employerProfile.verificationStatus !== "verified") {
+          return NextResponse.json(
+            {
+              error:
+                "Публікація вакансій промислового рибальства від ФОП вимагає верифікації, яка конкретно підтверджує ліцензований вилов риби (щоб виключити браконьєрство). Пройдіть верифікацію (ІПН) у профілі й вкажіть вид діяльності.",
+            },
+            { status: 403 },
+          );
+        }
+        const activity = employerProfile.businessActivity?.trim() ?? "";
+        if (!activity || !matchesLicensedFishingActivity(activity)) {
+          return NextResponse.json(
+            {
+              error:
+                'Заявлений вид діяльності у профілі не підтверджує ліцензований вилов риби/аквакультуру. Оновіть поле "Вид діяльності" (наприклад, "рибальство", "рибне господарство", "аквакультура") — це знову відправить профіль на верифікацію адміном.',
+            },
+            { status: 403 },
+          );
+        }
       }
 
       const trustGate = await checkTrustGate(
@@ -512,6 +591,8 @@ export async function POST(request: Request) {
       moderationReason,
       moderationCategory,
       serviceCenterTier: parsed.data.serviceCenterTier,
+      fleetType: parsed.data.fleetType,
+      isForeignVesselCrewing: parsed.data.isForeignVesselCrewing ?? false,
     })
     .returning();
 

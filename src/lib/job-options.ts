@@ -41,6 +41,41 @@ export const SERVICE_CENTER_TIER_BADGE_LABELS: Record<string, string> =
     SERVICE_CENTER_TIERS.map((t) => [t.value, t.badgeLabel]),
   );
 
+// Тип флоту/район плавання — лише для category="maritime_transport".
+export const FLEET_TYPES = [
+  {
+    value: "river",
+    label: "Річковий флот",
+    badgeLabel: "Річковий флот",
+    hint: "Буксири, баржі, прогулянкові катери, річкові пасажирські судна.",
+  },
+  {
+    value: "coastal_cabotage",
+    label: "Морське прибережне (каботажне) плавання",
+    badgeLabel: "Каботажне плавання",
+    hint: "Обмежений район плавання вздовж узбережжя, без виходу у відкритий океан.",
+  },
+  {
+    value: "ocean_going",
+    label: "Морське судноплавство необмеженого району плавання",
+    badgeLabel: "Океанське судноплавство",
+    hint: "Танкери, балкери, великі судна — рейси без обмеження району плавання.",
+  },
+  {
+    value: "cruise_passenger",
+    label: "Круїзні / пасажирські лайнери",
+    badgeLabel: "Круїзний лайнер",
+    hint: "Окремий клас через специфіку пасажирського сервісу та вимог до персоналу.",
+  },
+] as const;
+
+export const FLEET_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  FLEET_TYPES.map((t) => [t.value, t.label]),
+);
+
+export const FLEET_TYPE_BADGE_LABELS: Record<string, string> =
+  Object.fromEntries(FLEET_TYPES.map((t) => [t.value, t.badgeLabel]));
+
 export const JOB_CATEGORIES = [
   { value: "it", label: "IT" },
   { value: "construction", label: "Будівництво та ремонт" },
@@ -409,6 +444,41 @@ export const JOB_SUBCATEGORIES: Record<
         "Транспортний цех та внутрішнє СТО (начальник транспортного цеху, слюсар з ремонту дорожньо-будівельних машин та тракторів, слюсар з ремонту колісного транспорту)",
     },
   ],
+  // Примітка щодо рибальства (maritime_fishing_aquaculture): на відміну
+  // від решти підкатегорій цієї категорії (де вимагається лише юрособа —
+  // requiresAgencyVerification нижче), тут ФОП дозволені, але лише
+  // верифіковані, причому верифікація має конкретно підтверджувати
+  // ліцензований вилов риби (не просто загальний статус "verified") —
+  // неверифікований ФОП у цій підкатегорії може бути браконьєром. Див.
+  // checkFishingActivityMatch у trust-gate.ts та відповідну логіку в
+  // route.ts.
+  maritime_transport: [
+    {
+      value: "maritime_deck_crew",
+      label:
+        "Палубна команда (капітан судна / змінний капітан, старший помічник капітана / штурман, вахтовий помічник капітана, боцман, матрос, керманич-моторист / керманич — специфічна посада для річкового флоту)",
+    },
+    {
+      value: "maritime_engine_crew",
+      label:
+        "Машинна команда (старший механік, другий / вахтовий механік, електромеханік / судновий електрик, моторист / донкерман, судновий зварювальник / токар)",
+    },
+    {
+      value: "maritime_service_catering",
+      label:
+        "Судновий сервіс та кухня (судновий кухар / шеф-кухар, стюард / стюардеса / мессбой)",
+    },
+    {
+      value: "maritime_port_logistics",
+      label:
+        "Портове господарство та логістика (стивідор / начальник зміни порту, тальман, докер-механізатор / кранівник портального крана, матрос береговий / швартовник, судновий агент)",
+    },
+    {
+      value: "maritime_fishing_aquaculture",
+      label:
+        "Промислове рибальство та аквакультура (капітан-старшина рибальського судна, керманич-моторист / моторист баркаса, прибережний рибалка / матрос рибальського лова, робітник рибного цеху / заготівельник)",
+    },
+  ],
   railway_transport: [
     {
       value: "railway_locomotive_rolling_stock",
@@ -601,7 +671,7 @@ export function registrationNumberLabel(
 }
 
 // Пари category:subcategory, де публікація вимагає верифікованої ЮРОСОБИ
-// (навіть верифікований ФОП недостатньо). Три різні причини потрапляння
+// (навіть верифікований ФОП недостатньо). Чотири різні причини потрапляння
 // сюди:
 // 1) кінцевий "роботодавець" по суті приватна особа, а не структура —
 //    найм фізособою напряму реальний ризик для обох сторін (кандидат "з
@@ -615,7 +685,13 @@ export function registrationNumberLabel(
 //    секс-індустрію під легальним на вигляд оголошенням (аніматор/
 //    масажист "у готель за кордоном" — класична схема). Верифікована
 //    юрособа (готель, SPA-мережа) значно важче підробити, ніж ФОП чи
-//    анонімний акаунт, тож саме тут піднімаємо поріг.
+//    анонімний акаунт, тож саме тут піднімаємо поріг;
+// 4) судно (палубна/машинна команда, судновий сервіс, портове
+//    господарство) — це завжди актив юрособи (судновласник, портовий
+//    оператор, крюїнгова агенція), одноосібний ФОП фізично не може бути
+//    роботодавцем на судні чи в порту. Виняток у цій категорії —
+//    промислове рибальство (maritime_fishing_aquaculture), там ФОП
+//    дозволені окремою логікою — див. checkFishingActivityMatch.
 // Хто не хоче йти через агенцію/ліцензовану установу — може шукати на
 // інших майданчиках на свій ризик, тут це свідомо не підтримується.
 const AGENCY_ONLY_PAIRS = new Set([
@@ -627,6 +703,10 @@ const AGENCY_ONLY_PAIRS = new Set([
   "service_staff:private_household_staff",
   "accounting:cash_operations",
   "hospitality:horeca_animators_masseurs",
+  "maritime_transport:maritime_deck_crew",
+  "maritime_transport:maritime_engine_crew",
+  "maritime_transport:maritime_service_catering",
+  "maritime_transport:maritime_port_logistics",
 ]);
 
 export function requiresAgencyVerification(
@@ -634,6 +714,19 @@ export function requiresAgencyVerification(
   subcategory: string | null | undefined,
 ): boolean {
   return !!subcategory && AGENCY_ONLY_PAIRS.has(`${category}:${subcategory}`);
+}
+
+// category:subcategory для промислового рибальства — див. коментар над
+// AGENCY_ONLY_PAIRS (виняток №4) і checkFishingActivityMatch-логіку в
+// route.ts / matchesLicensedFishingActivity у trust-gate.ts.
+export function isFishingSubcategory(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return (
+    category === "maritime_transport" &&
+    subcategory === "maritime_fishing_aquaculture"
+  );
 }
 
 // Пари category:subcategory, де достатньо звичайної верифікації (ЄДРПОУ

@@ -6,6 +6,7 @@ import {
   EMPLOYMENT_TYPES,
   JOB_CATEGORIES,
   SERVICE_CENTER_TIERS,
+  FLEET_TYPES,
   getSubcategoriesFor,
   suggestsCivilianCateringInMilitaryCategory,
 } from "@/lib/job-options";
@@ -13,6 +14,7 @@ import {
 type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]["value"];
 type Category = (typeof JOB_CATEGORIES)[number]["value"];
 type ServiceCenterTier = (typeof SERVICE_CENTER_TIERS)[number]["value"];
+type FleetType = (typeof FLEET_TYPES)[number]["value"];
 type Status = "draft" | "published" | "closed";
 
 export type JobFormValues = {
@@ -28,6 +30,8 @@ export type JobFormValues = {
   skillsInput: string;
   status: Status;
   serviceCenterTier: ServiceCenterTier | "";
+  fleetType: FleetType | "";
+  isForeignVesselCrewing: boolean;
 };
 
 const EMPTY_VALUES: JobFormValues = {
@@ -43,6 +47,8 @@ const EMPTY_VALUES: JobFormValues = {
   skillsInput: "",
   status: "draft",
   serviceCenterTier: "",
+  fleetType: "",
+  isForeignVesselCrewing: false,
 };
 
 export default function JobForm({
@@ -93,6 +99,12 @@ export default function JobForm({
     if (value !== "auto_service") {
       setServiceCenterTier("");
     }
+    // Тип флоту та позначка іноземного судна стосуються лише
+    // maritime_transport — при зміні категорії скидаємо
+    if (value !== "maritime_transport") {
+      setFleetType("");
+      setIsForeignVesselCrewing(false);
+    }
   }
 
   const availableSubcategories = getSubcategoriesFor(category);
@@ -123,6 +135,12 @@ export default function JobForm({
   const [serviceCenterTier, setServiceCenterTier] = useState<
     ServiceCenterTier | ""
   >(initialValues?.serviceCenterTier ?? EMPTY_VALUES.serviceCenterTier);
+  const [fleetType, setFleetType] = useState<FleetType | "">(
+    initialValues?.fleetType ?? EMPTY_VALUES.fleetType,
+  );
+  const [isForeignVesselCrewing, setIsForeignVesselCrewing] = useState(
+    initialValues?.isForeignVesselCrewing ?? EMPTY_VALUES.isForeignVesselCrewing,
+  );
   const [status, setStatus] = useState<Status>(
     initialValues?.status ?? EMPTY_VALUES.status,
   );
@@ -161,6 +179,14 @@ export default function JobForm({
             : isEdit
               ? null
               : undefined,
+        fleetType:
+          category === "maritime_transport" && fleetType
+            ? fleetType
+            : isEdit
+              ? null
+              : undefined,
+        isForeignVesselCrewing:
+          category === "maritime_transport" ? isForeignVesselCrewing : false,
       }),
     });
 
@@ -285,6 +311,66 @@ export default function JobForm({
                 Не вказувати
               </button>
             )}
+          </div>
+        )}
+
+        {category === "maritime_transport" && (
+          <div className="flex flex-col gap-2 rounded border border-neutral-200 p-3">
+            <span className="text-sm font-medium text-neutral-700">
+              Тип флоту / район плавання (необов&apos;язково)
+            </span>
+            <p className="text-xs text-neutral-500">
+              Та сама посада на річковому буксирі й на океанському танкері —
+              по суті різні вакансії з різними вимогами до сертифікатів.
+              Покажеться бейджем і дасть кандидатам фільтр у пошуку.
+            </p>
+            {FLEET_TYPES.map((tier) => (
+              <label key={tier.value} className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="fleetType"
+                  value={tier.value}
+                  checked={fleetType === tier.value}
+                  onChange={() => setFleetType(tier.value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-medium">{tier.label}</span>
+                  <span className="block text-xs text-neutral-500">
+                    {tier.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+            {fleetType && (
+              <button
+                type="button"
+                onClick={() => setFleetType("")}
+                className="self-start text-xs text-neutral-500 underline"
+              >
+                Не вказувати
+              </button>
+            )}
+
+            <label className="mt-2 flex items-start gap-2 border-t border-neutral-100 pt-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isForeignVesselCrewing}
+                onChange={(e) => setIsForeignVesselCrewing(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">
+                  Судно під іноземним прапором (крюїнг за кордон)
+                </span>
+                <span className="block text-xs text-neutral-500">
+                  Публікація вакансій на іноземні судна вимагає ліцензії
+                  Мінекономіки на посередництво у працевлаштуванні за
+                  кордоном — вкажіть номер ліцензії у своєму профілі,
+                  інакше публікація буде заблокована.
+                </span>
+              </span>
+            </label>
           </div>
         )}
 

@@ -395,3 +395,30 @@ export function hasObviousEntertainmentRoleKeyword(
   const text = `${title} ${description}`.toLowerCase();
   return ENTERTAINMENT_ROLE_KEYWORDS.some((kw) => text.includes(kw));
 }
+
+// Перевіряє, чи заявлений вид діяльності ФОП (employerProfiles.businessActivity)
+// вказує на ліцензований вилов риби/аквакультуру. Використовується для
+// category="maritime_transport", subcategory="maritime_fishing_aquaculture":
+// на відміну від решти підкатегорій цієї категорії (де ФОП взагалі не
+// допускаються — AGENCY_ONLY_PAIRS у job-options.ts), рибальство дозволяє
+// верифікованого ФОП, АЛЕ лише якщо сама верифікація стосується саме
+// ліцензованого рибного промислу — інакше це може бути прикриттям для
+// браконьєрства. На відміну від checkBusinessActivityMismatch (шоу-бізнес),
+// тут не потрібен AI-виклик: перелік офіційної термінології рибного
+// господарства достатньо вузький і стабільний для прямого keyword-збігу,
+// без потреби в семантичній оцінці правдоподібності.
+const FISHING_ACTIVITY_KEYWORDS = [
+  "рибальств",
+  "риболов",
+  "рибогосподар",
+  "рибопромисл",
+  "аквакультур",
+  "рибн", // рибне господарство / рибна промисловість
+];
+
+export function matchesLicensedFishingActivity(
+  businessActivity: string,
+): boolean {
+  const text = businessActivity.toLowerCase();
+  return FISHING_ACTIVITY_KEYWORDS.some((kw) => text.includes(kw));
+}

@@ -46,6 +46,8 @@ export default async function EmployerProfilePage() {
           employerType: profile.employerType ?? "",
           edrpou: profile.edrpou ?? "",
           businessActivity: profile.businessActivity ?? "",
+          foreignEmploymentLicenseNumber:
+            profile.foreignEmploymentLicenseNumber ?? "",
         }}
         verificationStatus={profile.verificationStatus}
         verificationNote={profile.verificationNote}

@@ -1,6 +1,6 @@
 {
-  "id": "cac132f3-21d4-4831-8882-a4c893a0a987",
-  "prevId": "1effbdaa-d104-416b-8519-096ba2c010de",
+  "id": "8f02ea1f-20d2-47ee-b626-22906f76ea23",
+  "prevId": "cac132f3-21d4-4831-8882-a4c893a0a987",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -302,6 +302,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "foreign_employment_license_number": {
+          "name": "foreign_employment_license_number",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "employer_type": {
           "name": "employer_type",
           "type": "employer_type",
@@ -449,6 +455,20 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
+        },
+        "fleet_type": {
+          "name": "fleet_type",
+          "type": "fleet_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_foreign_vessel_crewing": {
+          "name": "is_foreign_vessel_crewing",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "cross_listed_categories": {
           "name": "cross_listed_categories",
@@ -762,6 +782,16 @@
         "contract",
         "internship",
         "remote"
+      ]
+    },
+    "public.fleet_type": {
+      "name": "fleet_type",
+      "schema": "public",
+      "values": [
+        "river",
+        "coastal_cabotage",
+        "ocean_going",
+        "cruise_passenger"
       ]
     },
     "public.job_category": {

@@ -10,9 +10,16 @@ import {
   checkTrustGate,
   checkBusinessActivityMismatch,
   hasObviousEntertainmentRoleKeyword,
+  matchesLicensedFishingActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
-import { getSubcategoriesFor, requiresAgencyVerification, requiresVerificationOnly, isGovernmentAuthorityRole } from "@/lib/job-options";
+import {
+  getSubcategoriesFor,
+  requiresAgencyVerification,
+  requiresVerificationOnly,
+  isGovernmentAuthorityRole,
+  isFishingSubcategory,
+} from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
   "it",
@@ -66,6 +73,11 @@ const updateJobSchema = z.object({
     .enum(["dealer", "network", "private"])
     .nullable()
     .optional(),
+  fleetType: z
+    .enum(["river", "coastal_cabotage", "ocean_going", "cruise_passenger"])
+    .nullable()
+    .optional(),
+  isForeignVesselCrewing: z.boolean().optional(),
 });
 
 async function getJobWithOwner(jobId: string) {
@@ -76,6 +88,8 @@ async function getJobWithOwner(jobId: string) {
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
       businessActivity: employerProfiles.businessActivity,
+      foreignEmploymentLicenseNumber:
+        employerProfiles.foreignEmploymentLicenseNumber,
       banned: employerProfiles.banned,
     })
     .from(jobs)
@@ -167,6 +181,19 @@ export async function PATCH(
     }
   }
 
+  if (parsed.data.fleetType || parsed.data.isForeignVesselCrewing) {
+    const effectiveCategory = parsed.data.category ?? row.job.category;
+    if (effectiveCategory !== "maritime_transport") {
+      return NextResponse.json(
+        {
+          error:
+            'Тип флоту та позначку "судно під іноземним прапором" можна вказати лише для категорії "Морський та річковий транспорт"',
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // Вакансія опублікована/публікується зараз → перевіряємо AI-модерацією
   // (використовуючи вже оновлений текст, якщо title/description змінились
   // у цьому запиті). "Fail open" при збої AI — не блокуємо employer'а.
@@ -192,6 +219,13 @@ export async function PATCH(
       | "other"
       | null;
     serviceCenterTier?: "dealer" | "network" | "private" | null;
+    fleetType?:
+      | "river"
+      | "coastal_cabotage"
+      | "ocean_going"
+      | "cruise_passenger"
+      | null;
+    isForeignVesselCrewing?: boolean;
   } = { ...parsed.data };
 
   // Захист від "осиротілого" значення: якщо категорію змінили на щось
@@ -205,6 +239,19 @@ export async function PATCH(
     row.job.serviceCenterTier
   ) {
     updates.serviceCenterTier = null;
+  }
+
+  // Той самий захист для maritime_transport-специфічних полів.
+  if (updates.category && updates.category !== "maritime_transport") {
+    if (parsed.data.fleetType === undefined && row.job.fleetType) {
+      updates.fleetType = null;
+    }
+    if (
+      parsed.data.isForeignVesselCrewing === undefined &&
+      row.job.isForeignVesselCrewing
+    ) {
+      updates.isForeignVesselCrewing = false;
+    }
   }
 
   if (targetStatus === "published") {
@@ -272,6 +319,24 @@ export async function PATCH(
       );
     }
 
+    // Крюїнг за кордон — юридична вимога незалежно від isLowTrust, див.
+    // детальний коментар у POST /api/jobs.
+    const effectiveIsForeignVesselCrewing =
+      parsed.data.isForeignVesselCrewing ?? row.job.isForeignVesselCrewing;
+    if (
+      effectiveCategory === "maritime_transport" &&
+      effectiveIsForeignVesselCrewing &&
+      !row.foreignEmploymentLicenseNumber?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Публікація вакансій на судна під іноземним прапором (крюїнг за кордон) вимагає ліцензії Мінекономіки на посередництво у працевлаштуванні за кордоном. Вкажіть номер ліцензії у профілі роботодавця.',
+        },
+        { status: 403 },
+      );
+    }
+
     const isLowTrust =
       row.employerType === "fop" || row.verificationStatus !== "verified";
 
@@ -313,10 +378,35 @@ export async function PATCH(
         return NextResponse.json(
           {
             error:
-              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, якої в ФОП не буває), або підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо). Приватний найм фізособою чи ФОП тут не підтримується.",
+              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, якої в ФОП не буває), підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо), або те, що роботодавець — судно/порт (палубна, машинна команда, судновий сервіс, портове господарство — судновласником чи портовим оператором не буває ФОП). Приватний найм фізособою чи ФОП тут не підтримується.",
           },
           { status: 403 },
         );
+      }
+
+      if (
+        isFishingSubcategory(effectiveCategory, effectiveSubcategory) &&
+        row.employerType === "fop"
+      ) {
+        if (row.verificationStatus !== "verified") {
+          return NextResponse.json(
+            {
+              error:
+                "Публікація вакансій промислового рибальства від ФОП вимагає верифікації, яка конкретно підтверджує ліцензований вилов риби (щоб виключити браконьєрство). Пройдіть верифікацію (ІПН) у профілі й вкажіть вид діяльності.",
+            },
+            { status: 403 },
+          );
+        }
+        const activity = row.businessActivity?.trim() ?? "";
+        if (!activity || !matchesLicensedFishingActivity(activity)) {
+          return NextResponse.json(
+            {
+              error:
+                'Заявлений вид діяльності у профілі не підтверджує ліцензований вилов риби/аквакультуру. Оновіть поле "Вид діяльності" (наприклад, "рибальство", "рибне господарство", "аквакультура") — це знову відправить профіль на верифікацію адміном.',
+            },
+            { status: 403 },
+          );
+        }
       }
 
       const trustGate = await checkTrustGate(title, description);

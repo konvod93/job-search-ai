@@ -37,6 +37,7 @@ const updateSchema = z
       )
       .optional(),
     businessActivity: z.string().max(255).optional(),
+    foreignEmploymentLicenseNumber: z.string().max(100).optional(),
   })
   .refine(
     (data) => !(data.edrpou && data.edrpou !== "" && !data.employerType),
@@ -87,6 +88,8 @@ export async function PATCH(request: Request) {
     .select({
       edrpou: employerProfiles.edrpou,
       businessActivity: employerProfiles.businessActivity,
+      foreignEmploymentLicenseNumber:
+        employerProfiles.foreignEmploymentLicenseNumber,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
     })
@@ -121,6 +124,19 @@ export async function PATCH(request: Request) {
     parsed.data.businessActivity !== undefined &&
     parsed.data.businessActivity.trim() !==
       (existing.businessActivity ?? "") &&
+    verificationStatus !== "unverified"
+  ) {
+    verificationStatus = "pending";
+  }
+
+  // Той самий принцип для номера ліцензії Мінекономіки на крюїнг —
+  // адмін звіряє його під час верифікації, тож зміна поля теж скидає
+  // статус (інакше можна вписати довільний номер заднім числом і обійти
+  // гейт для вакансій на іноземні судна, див. isForeignVesselCrewing).
+  if (
+    parsed.data.foreignEmploymentLicenseNumber !== undefined &&
+    parsed.data.foreignEmploymentLicenseNumber.trim() !==
+      (existing.foreignEmploymentLicenseNumber ?? "") &&
     verificationStatus !== "unverified"
   ) {
     verificationStatus = "pending";

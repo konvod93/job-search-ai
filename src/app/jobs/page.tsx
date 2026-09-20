@@ -9,6 +9,8 @@ import {
   JOB_CATEGORY_LABELS,
   SERVICE_CENTER_TIERS,
   SERVICE_CENTER_TIER_BADGE_LABELS,
+  FLEET_TYPES,
+  FLEET_TYPE_BADGE_LABELS,
   subcategoryLabel,
 } from "@/lib/job-options";
 
@@ -18,6 +20,7 @@ type SearchParams = Promise<{
   employmentType?: string;
   category?: string;
   serviceCenterTier?: string;
+  fleetType?: string;
 }>;
 
 export default async function JobsPage({
@@ -25,7 +28,7 @@ export default async function JobsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { q, location, employmentType, category, serviceCenterTier } =
+  const { q, location, employmentType, category, serviceCenterTier, fleetType } =
     await searchParams;
 
   const filters = [eq(jobs.status, "published")];
@@ -67,6 +70,16 @@ export default async function JobsPage({
         jobs.serviceCenterTier,
         serviceCenterTier as (typeof SERVICE_CENTER_TIERS)[number]["value"],
       ),
+    );
+  }
+  // Той самий принцип для типу флоту в maritime_transport.
+  if (
+    category === "maritime_transport" &&
+    fleetType &&
+    FLEET_TYPES.some((t) => t.value === fleetType)
+  ) {
+    filters.push(
+      eq(jobs.fleetType, fleetType as (typeof FLEET_TYPES)[number]["value"]),
     );
   }
 
@@ -134,6 +147,20 @@ export default async function JobsPage({
             ))}
           </select>
         )}
+        {category === "maritime_transport" && (
+          <select
+            name="fleetType"
+            defaultValue={fleetType ?? ""}
+            className="rounded border border-neutral-300 px-3 py-2"
+          >
+            <option value="">Будь-який тип флоту</option>
+            {FLEET_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="submit"
           className="rounded bg-neutral-900 px-4 py-2 text-white"
@@ -175,6 +202,16 @@ export default async function JobsPage({
               {job.serviceCenterTier && (
                 <span className="w-fit rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
                   {SERVICE_CENTER_TIER_BADGE_LABELS[job.serviceCenterTier]}
+                </span>
+              )}
+              {job.fleetType && (
+                <span className="w-fit rounded-full bg-cyan-50 px-2 py-0.5 text-xs text-cyan-700">
+                  {FLEET_TYPE_BADGE_LABELS[job.fleetType]}
+                </span>
+              )}
+              {job.isForeignVesselCrewing && (
+                <span className="w-fit rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                  Іноземний прапор
                 </span>
               )}
             </div>

@@ -8,6 +8,7 @@ import {
   EMPLOYMENT_TYPE_LABELS,
   JOB_CATEGORY_LABELS,
   SERVICE_CENTER_TIER_LABELS,
+  FLEET_TYPE_LABELS,
   subcategoryLabel,
 } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
@@ -125,6 +126,16 @@ export default async function JobDetailPage({
         {job.serviceCenterTier && (
           <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-800">
             {SERVICE_CENTER_TIER_LABELS[job.serviceCenterTier]}
+          </span>
+        )}
+        {job.fleetType && (
+          <span className="rounded-full bg-cyan-50 px-3 py-1 text-cyan-800">
+            {FLEET_TYPE_LABELS[job.fleetType]}
+          </span>
+        )}
+        {job.isForeignVesselCrewing && (
+          <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-800">
+            Судно під іноземним прапором
           </span>
         )}
         <span className="rounded-full bg-neutral-100 px-3 py-1">
