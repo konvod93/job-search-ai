@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -261,6 +261,7 @@ export async function POST(request: Request) {
     | "scam"
     | "spam"
     | "exploitation_risk"
+    | "banned_repertoire_risk"
     | "other"
     | null = null;
 
@@ -309,6 +310,22 @@ export async function POST(request: Request) {
       moderationCategory = "exploitation_risk";
       moderationReason =
         "Виявлено за ключовими словами (віковий діапазон + вимога до зовнішності без професійного обґрунтування) — AI-модерація була недоступна, потрібен ручний розгляд.";
+    } else if (
+      moderation === null &&
+      hasBannedRepertoireRiskPattern(
+        parsed.data.title,
+        parsed.data.description,
+      )
+    ) {
+      // Той самий принцип фолбеку — див. коментар біля
+      // hasBannedRepertoireRiskPattern у moderation.ts.
+      console.error(
+        "[jobs] moderateJobListing повернув null (AI недоступний) — спрацював keyword-фолбек banned_repertoire_risk.",
+      );
+      status = "pending_review";
+      moderationCategory = "banned_repertoire_risk";
+      moderationReason =
+        "Виявлено за ключовими словами (вимога репертуару рос. шансону/блатняку — публічне виконання законодавчо обмежене) — AI-модерація була недоступна, потрібен ручний розгляд.";
     }
 
     // Ролі, де достатньо звичайної верифікації (ФОП з ліцензією — ок), але

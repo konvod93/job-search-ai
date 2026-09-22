@@ -1,0 +1,1 @@
+ALTER TYPE "public"."moderation_category" ADD VALUE 'banned_repertoire_risk' BEFORE 'other';

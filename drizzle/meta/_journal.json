@@ -134,6 +134,13 @@
       "when": 1787394809522,
       "tag": "0018_steady_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790068895801,
+      "tag": "0019_cultured_leopardon",
+      "breakpoints": true
     }
   ]
 }

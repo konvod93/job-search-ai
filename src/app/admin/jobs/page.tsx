@@ -11,6 +11,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   scam: "Шахрайство",
   spam: "Спам",
   exploitation_risk: "⚠ Ризик експлуатації/трафікінгу",
+  banned_repertoire_risk: "⚠ Заборонений репертуар",
   other: "Інше",
 };
 

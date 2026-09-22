@@ -1,6 +1,6 @@
 {
-  "id": "8f02ea1f-20d2-47ee-b626-22906f76ea23",
-  "prevId": "cac132f3-21d4-4831-8882-a4c893a0a987",
+  "id": "2e0c5289-54ca-4954-86c3-142e8c6409cd",
+  "prevId": "8f02ea1f-20d2-47ee-b626-22906f76ea23",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -849,6 +849,7 @@
         "scam",
         "spam",
         "exploitation_risk",
+        "banned_repertoire_risk",
         "other"
       ]
     },
