@@ -296,6 +296,20 @@ const NON_ENTERTAINMENT_ACTIVITY_KEYWORDS = [
   "спа",
 ];
 
+// Детермінована перевірка (без AI) — чи заявлений вид діяльності ФОП
+// узгоджується з профілем show_business. Використовує той самий
+// ENTERTAINMENT_ACTIVITY_KEYWORDS, що й checkBusinessActivityMismatch
+// вище, бо термінологія ідентична (продюсерський центр/агентство/студія/
+// лейбл — усе це вже покрито списком). На відміну від checkBusinessActivityMismatch,
+// тут немає AI-фолбеку для неоднозначних випадків: гейт для show_business
+// — hard block, а не "відправити на розгляд адміну", тож хибний мисметч
+// на AI тут не потрібен — проста детермінована перевірка, employer сам
+// виправить businessActivity, якщо та не відображає реальний КВЕД.
+export function matchesShowBusinessActivity(businessActivity: string): boolean {
+  const normalized = businessActivity.toLowerCase();
+  return ENTERTAINMENT_ACTIVITY_KEYWORDS.some((kw) => normalized.includes(kw));
+}
+
 export async function checkBusinessActivityMismatch(
   title: string,
   description: string,

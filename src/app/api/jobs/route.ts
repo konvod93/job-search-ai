@@ -11,6 +11,7 @@ import {
   checkBusinessActivityMismatch,
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
+  matchesShowBusinessActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -362,6 +363,33 @@ export async function POST(request: Request) {
         },
         { status: 403 },
       );
+    }
+
+    // Шоу-бізнес — приватного найму тут немає в принципі (не питання
+    // довіри одного конкретного оголошення, а структурна вимога до ВСІЄЇ
+    // категорії), тому гейт теж поза isLowTrust і застосовується завжди.
+    if (parsed.data.category === "show_business") {
+      if (employerProfile.verificationStatus !== "verified") {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій у категорії \"Шоу-бізнес та індустрії розваг\" вимагає верифікації роботодавця. Наймати можуть лише продюсерські центри, івент-агенції, телерадіокомпанії, кіностудії, звукозаписні лейбли та ліцензовані модельні агенції — пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі.",
+          },
+          { status: 403 },
+        );
+      }
+      if (employerProfile.employerType === "fop") {
+        const activity = employerProfile.businessActivity?.trim() ?? "";
+        if (!activity || !matchesShowBusinessActivity(activity)) {
+          return NextResponse.json(
+            {
+              error:
+                'Заявлений вид діяльності у профілі не відповідає профілю шоу-бізнесу/медіа (продюсування, відео/кіновиробництво, агентська чи концертна діяльність тощо). Оновіть поле "Вид діяльності" — це знову відправить профіль на верифікацію адміном.',
+            },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     // Trust-gate: додаткові жорсткі обмеження для роботодавців з низьким

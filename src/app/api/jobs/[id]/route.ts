@@ -11,6 +11,7 @@ import {
   checkBusinessActivityMismatch,
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
+  matchesShowBusinessActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -349,6 +350,32 @@ export async function PATCH(
         },
         { status: 403 },
       );
+    }
+
+    // Шоу-бізнес — див. детальний коментар у POST /api/jobs: приватного
+    // найму тут немає в принципі, гейт теж поза isLowTrust.
+    if (effectiveCategory === "show_business") {
+      if (row.verificationStatus !== "verified") {
+        return NextResponse.json(
+          {
+            error:
+              "Публікація вакансій у категорії \"Шоу-бізнес та індустрії розваг\" вимагає верифікації роботодавця. Наймати можуть лише продюсерські центри, івент-агенції, телерадіокомпанії, кіностудії, звукозаписні лейбли та ліцензовані модельні агенції — пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі.",
+          },
+          { status: 403 },
+        );
+      }
+      if (row.employerType === "fop") {
+        const activity = row.businessActivity?.trim() ?? "";
+        if (!activity || !matchesShowBusinessActivity(activity)) {
+          return NextResponse.json(
+            {
+              error:
+                'Заявлений вид діяльності у профілі не відповідає профілю шоу-бізнесу/медіа (продюсування, відео/кіновиробництво, агентська чи концертна діяльність тощо). Оновіть поле "Вид діяльності" — це знову відправить профіль на верифікацію адміном.',
+            },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     const isLowTrust =
