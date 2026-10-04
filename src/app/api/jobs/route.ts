@@ -12,6 +12,8 @@ import {
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
   matchesShowBusinessActivity,
+  checkCleaningPrivateResidenceRisk,
+  hasObviousPrivateResidenceKeyword,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -344,6 +346,43 @@ export async function POST(request: Request) {
         },
         { status: 403 },
       );
+    }
+
+    // Клінінг: навіть верифікований ФОП/юрособа може ховати приватний
+    // домашній найм під виглядом "клінінгу" — текст вакансії перевіряємо
+    // незалежно від самого факту верифікації. М'яко (pending_review, а
+    // не hard block), бо формулювання буває межовим (напр. невеликий
+    // ФОП-ательє, де офіс фактично у квартирі) — нехай вирішує адмін.
+    if (
+      parsed.data.category === "service_staff" &&
+      parsed.data.subcategory === "commercial_institutional_cleaning"
+    ) {
+      const privateResidenceCheck = await checkCleaningPrivateResidenceRisk(
+        parsed.data.title,
+        parsed.data.description,
+      );
+      const isPrivateResidence =
+        privateResidenceCheck?.isPrivateResidence ??
+        (privateResidenceCheck === null &&
+          hasObviousPrivateResidenceKeyword(
+            parsed.data.title,
+            parsed.data.description,
+          ));
+
+      if (privateResidenceCheck === null) {
+        console.error(
+          "[jobs] checkCleaningPrivateResidenceRisk повернув null (AI недоступний) — fallback за ключовими словами:",
+          isPrivateResidence,
+        );
+      }
+
+      if (isPrivateResidence) {
+        status = "pending_review";
+        moderationCategory = "other";
+        moderationReason = privateResidenceCheck?.reason
+          ? `Вакансія в категорії "клінінг", але текст описує приватне домашнє прибирання, а не комерційне/інституційне приміщення: ${privateResidenceCheck.reason}`
+          : 'Вакансія в категорії "клінінг", але виявлено ознаки приватного домашнього прибирання (власна квартира/будинок) за ключовими словами — AI-перевірка була недоступна, потрібен ручний розгляд.';
+      }
     }
 
     // Крюїнг за кордон — юридична вимога, а не питання довіри: навіть

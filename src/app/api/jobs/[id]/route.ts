@@ -12,6 +12,8 @@ import {
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
   matchesShowBusinessActivity,
+  checkCleaningPrivateResidenceRisk,
+  hasObviousPrivateResidenceKeyword,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -332,6 +334,38 @@ export async function PATCH(
         },
         { status: 403 },
       );
+    }
+
+    // Клінінг: навіть верифікований ФОП/юрособа може ховати приватний
+    // домашній найм під виглядом "клінінгу" — див. детальний коментар у
+    // POST /api/jobs.
+    if (
+      effectiveCategory === "service_staff" &&
+      effectiveSubcategory === "commercial_institutional_cleaning"
+    ) {
+      const privateResidenceCheck = await checkCleaningPrivateResidenceRisk(
+        title,
+        description,
+      );
+      const isPrivateResidence =
+        privateResidenceCheck?.isPrivateResidence ??
+        (privateResidenceCheck === null &&
+          hasObviousPrivateResidenceKeyword(title, description));
+
+      if (privateResidenceCheck === null) {
+        console.error(
+          "[jobs] checkCleaningPrivateResidenceRisk повернув null (AI недоступний) — fallback за ключовими словами:",
+          isPrivateResidence,
+        );
+      }
+
+      if (isPrivateResidence) {
+        updates.status = "pending_review";
+        updates.moderationCategory = "other";
+        updates.moderationReason = privateResidenceCheck?.reason
+          ? `Вакансія в категорії "клінінг", але текст описує приватне домашнє прибирання, а не комерційне/інституційне приміщення: ${privateResidenceCheck.reason}`
+          : 'Вакансія в категорії "клінінг", але виявлено ознаки приватного домашнього прибирання (власна квартира/будинок) за ключовими словами — AI-перевірка була недоступна, потрібен ручний розгляд.';
+      }
     }
 
     // Крюїнг за кордон — юридична вимога незалежно від isLowTrust, див.
