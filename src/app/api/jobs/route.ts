@@ -12,8 +12,8 @@ import {
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
   matchesShowBusinessActivity,
-  checkCleaningPrivateResidenceRisk,
-  hasObviousPrivateResidenceKeyword,
+  isCleaningRelatedActivity,
+  mentionsResidentialPremise,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -348,40 +348,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Клінінг: навіть верифікований ФОП/юрособа може ховати приватний
-    // домашній найм під виглядом "клінінгу" — текст вакансії перевіряємо
-    // незалежно від самого факту верифікації. М'яко (pending_review, а
-    // не hard block), бо формулювання буває межовим (напр. невеликий
-    // ФОП-ательє, де офіс фактично у квартирі) — нехай вирішує адмін.
+    // Клінінг: навіть верифікований ФОП може ховати приватний домашній
+    // найм під виглядом "клінінгу" — див. детальний коментар біля
+    // isCleaningRelatedActivity/mentionsResidentialPremise у trust-gate.ts.
+    // Спочатку довіряємо businessActivity (профільний клінінг — ок,
+    // навіть якщо текст згадує чиюсь квартиру), і лише якщо бізнес НЕ
+    // профільний — перевіряємо, чи сам текст описує приватний житловий
+    // об'єкт. Юросіб ця перевірка не стосується — тільки ФОП.
     if (
       parsed.data.category === "service_staff" &&
-      parsed.data.subcategory === "commercial_institutional_cleaning"
+      parsed.data.subcategory === "commercial_institutional_cleaning" &&
+      employerProfile.employerType === "fop"
     ) {
-      const privateResidenceCheck = await checkCleaningPrivateResidenceRisk(
-        parsed.data.title,
-        parsed.data.description,
-      );
-      const isPrivateResidence =
-        privateResidenceCheck?.isPrivateResidence ??
-        (privateResidenceCheck === null &&
-          hasObviousPrivateResidenceKeyword(
-            parsed.data.title,
-            parsed.data.description,
-          ));
+      const activity = employerProfile.businessActivity?.trim() ?? "";
+      const isOwnBusinessCleaning = !!activity && isCleaningRelatedActivity(activity);
 
-      if (privateResidenceCheck === null) {
-        console.error(
-          "[jobs] checkCleaningPrivateResidenceRisk повернув null (AI недоступний) — fallback за ключовими словами:",
-          isPrivateResidence,
-        );
-      }
-
-      if (isPrivateResidence) {
+      if (
+        !isOwnBusinessCleaning &&
+        mentionsResidentialPremise(parsed.data.title, parsed.data.description)
+      ) {
         status = "pending_review";
         moderationCategory = "other";
-        moderationReason = privateResidenceCheck?.reason
-          ? `Вакансія в категорії "клінінг", але текст описує приватне домашнє прибирання, а не комерційне/інституційне приміщення: ${privateResidenceCheck.reason}`
-          : 'Вакансія в категорії "клінінг", але виявлено ознаки приватного домашнього прибирання (власна квартира/будинок) за ключовими словами — AI-перевірка була недоступна, потрібен ручний розгляд.';
+        moderationReason =
+          'Вакансія в категорії "клінінг" від ФОП, чий заявлений вид діяльності не пов\'язаний з клінінгом/прибиранням, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
       }
     }
 

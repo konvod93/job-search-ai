@@ -12,8 +12,8 @@ import {
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
   matchesShowBusinessActivity,
-  checkCleaningPrivateResidenceRisk,
-  hasObviousPrivateResidenceKeyword,
+  isCleaningRelatedActivity,
+  mentionsResidentialPremise,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -336,35 +336,26 @@ export async function PATCH(
       );
     }
 
-    // Клінінг: навіть верифікований ФОП/юрособа може ховати приватний
-    // домашній найм під виглядом "клінінгу" — див. детальний коментар у
-    // POST /api/jobs.
+    // Клінінг: навіть верифікований ФОП може ховати приватний домашній
+    // найм під виглядом "клінінгу" — див. детальний коментар у
+    // POST /api/jobs та біля isCleaningRelatedActivity/
+    // mentionsResidentialPremise у trust-gate.ts.
     if (
       effectiveCategory === "service_staff" &&
-      effectiveSubcategory === "commercial_institutional_cleaning"
+      effectiveSubcategory === "commercial_institutional_cleaning" &&
+      row.employerType === "fop"
     ) {
-      const privateResidenceCheck = await checkCleaningPrivateResidenceRisk(
-        title,
-        description,
-      );
-      const isPrivateResidence =
-        privateResidenceCheck?.isPrivateResidence ??
-        (privateResidenceCheck === null &&
-          hasObviousPrivateResidenceKeyword(title, description));
+      const activity = row.businessActivity?.trim() ?? "";
+      const isOwnBusinessCleaning = !!activity && isCleaningRelatedActivity(activity);
 
-      if (privateResidenceCheck === null) {
-        console.error(
-          "[jobs] checkCleaningPrivateResidenceRisk повернув null (AI недоступний) — fallback за ключовими словами:",
-          isPrivateResidence,
-        );
-      }
-
-      if (isPrivateResidence) {
+      if (
+        !isOwnBusinessCleaning &&
+        mentionsResidentialPremise(title, description)
+      ) {
         updates.status = "pending_review";
         updates.moderationCategory = "other";
-        updates.moderationReason = privateResidenceCheck?.reason
-          ? `Вакансія в категорії "клінінг", але текст описує приватне домашнє прибирання, а не комерційне/інституційне приміщення: ${privateResidenceCheck.reason}`
-          : 'Вакансія в категорії "клінінг", але виявлено ознаки приватного домашнього прибирання (власна квартира/будинок) за ключовими словами — AI-перевірка була недоступна, потрібен ручний розгляд.';
+        updates.moderationReason =
+          'Вакансія в категорії "клінінг" від ФОП, чий заявлений вид діяльності не пов\'язаний з клінінгом/прибиранням, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
       }
     }
 

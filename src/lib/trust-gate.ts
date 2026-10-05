@@ -437,142 +437,62 @@ export function matchesLicensedFishingActivity(
   return FISHING_ACTIVITY_KEYWORDS.some((kw) => text.includes(kw));
 }
 
-// Перевірка для service_staff:commercial_institutional_cleaning: чи
-// текст вакансії насправді описує приватне домашнє прибирання (квартира/
-// будинок власника), замасковане під "клінінг" — попри те, що
-// роботодавець формально верифікований ФОП чи юрособа. Приклади:
-// ДОЗВОЛЕНО — "ФОП Іванов шукає прибиральницю в офіс/майстерню/цех",
-// "Клінінгова компанія шукає прибиральницю в бригаду". НЕ ДОЗВОЛЕНО (хоч
-// формально теж від імені верифікованого ФОП) — "Шукаю прибиральницю для
-// своєї 3-кімнатної квартири". Верифікація особи саму по собі цього не
-// виключає — людина може бути цілком реальним верифікованим ФОП-
-// кравцем, що зловживає категорією для приватного побутового найму.
-export type PrivateResidenceRiskResult = {
-  isPrivateResidence: boolean;
-  reason: string | null;
-};
+// Перевірка для service_staff:commercial_institutional_cleaning — ДВА
+// незалежні деталі, обидва деterміновані (без AI, за тим самим
+// принципом, що й matchesLicensedFishingActivity/matchesShowBusinessActivity):
+// термінологія достатньо вузька й стабільна для прямого keyword-збігу.
+//
+// Реальний кейс, що виявив дірку в попередній версії: ФОП, верифікований
+// як ЕЛЕКТРИК, публікує вакансію "прибирання трьохкімнатної квартири" —
+// ні стара перевірка (яка аналізувала лише ТЕКСТ оголошення на присвійні
+// займенники типу "своєї") не зловила, бо тексту без займенника "своєї"/
+// "моєї" замало. Проблема глибша: сам текст оголошення — недостатній
+// сигнал без зіставлення з businessActivity роботодавця. Правильна логіка
+// (за прикладом із СТО):
+//   а) ФОП з бізнесом "СТО" наймає прибиральницю НА СВОЄ СТО — ОК, це
+//      звичайний найм для власних бізнес-потреб;
+//   б) той самий ФОП публікує вакансію, де йдеться про прибирання
+//      квартири/будинку/котеджу — це вже приватний найм під прикриттям
+//      бізнес-категорії, незалежно від того, чи є в тексті присвійний
+//      займенник;
+//   в) якщо ж сам бізнес ФОП — це клінінг/прибирання/благоустрій, то
+//      згадка "квартира" в оголошенні НОРМАЛЬНА (клінінгова компанія
+//      цілком легально обслуговує житло клієнтів) — довіряємо
+//      businessActivity, перевірку тексту НЕ робимо взагалі.
+// Тому spочатку перевіряємо businessActivity (isCleaningRelatedActivity):
+// якщо профільний — все, вакансія ок. Якщо НЕ профільний (електрик,
+// СТО, будь-що інше) — тоді вже дивимось, чи текст описує приватний
+// житловий об'єкт (mentionsResidentialPremise) — і якщо так, це і є
+// сигнал приватного найму.
+const CLEANING_BUSINESS_ACTIVITY_KEYWORDS = [
+  "клінінг",
+  "прибиранн",
+  "благоустр",
+  "озеленен",
+  "садівництв",
+];
 
-const PRIVATE_RESIDENCE_TOOL = {
-  name: "submit_private_residence_result",
-  description:
-    "Оцінює, чи вакансія прибиральниці насправді описує приватне домашнє прибирання (квартира/будинок власника), а не комерційне/інституційне приміщення",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      is_private_residence: {
-        type: "boolean" as const,
-        description:
-          "true, якщо текст явно описує прибирання приватного житла власника (своя квартира/будинок, для сім'ї тощо), а не офісу/цеху/магазину/об'єкта клінінгової компанії",
-      },
-      reason: {
-        type: "string" as const,
-        description:
-          "Коротке пояснення (до 20 слів). Порожній рядок, якщо is_private_residence=false.",
-      },
-    },
-    required: ["is_private_residence", "reason"],
-  },
-};
-
-const PRIVATE_RESIDENCE_SYSTEM_PROMPT = `Ти оцінюєш вакансію прибиральника/прибиральниці: чи йдеться насправді про прибирання ПРИВАТНОГО житла роботодавця (його власна квартира/будинок, для його родини), замасковане під звичайну "бізнес" вакансію клінінгу.
-
-is_private_residence=false — коли це явно комерційне/інституційне прибирання: офіс, цех, майстерня, магазин, склад, об'єкт клінінгової компанії, прибирання "в бригаду" чи "на об'єкти замовників" (навіть якщо один з об'єктів — чиясь квартира, бо це нормально для клінінгової компанії обслуговувати й житло клієнтів — ключове, хто роботодавець і яка в нього структура, а не сам факт "квартира" в тексті).
-
-is_private_residence=true — коли текст явно вказує, що прибирати потрібно САМЕ ЙОГО власне житло: "моя квартира", "наш будинок", конкретна кількість кімнат у контексті особистого помешкання, "для сім'ї", "додому", без жодної згадки компанії/об'єктів/бригади/клієнтів.`;
-
-export async function checkCleaningPrivateResidenceRisk(
-  title: string,
-  description: string,
-): Promise<PrivateResidenceRiskResult | null> {
-  try {
-    const client = getAnthropicClient();
-
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 200,
-      system: PRIVATE_RESIDENCE_SYSTEM_PROMPT,
-      tools: [PRIVATE_RESIDENCE_TOOL],
-      tool_choice: { type: "tool", name: PRIVATE_RESIDENCE_TOOL.name },
-      messages: [
-        {
-          role: "user",
-          content: `Назва: ${title}\n\nОпис: ${description}`,
-        },
-      ],
-    });
-
-    const toolUse = response.content.find(
-      (block) => block.type === "tool_use",
-    );
-
-    if (!toolUse || toolUse.type !== "tool_use") {
-      return null;
-    }
-
-    const input = toolUse.input as {
-      is_private_residence: boolean;
-      reason: string;
-    };
-
-    return {
-      isPrivateResidence: input.is_private_residence,
-      reason: input.is_private_residence ? input.reason : null,
-    };
-  } catch (err) {
-    console.error(
-      "[trust-gate] private residence cleaning check failed:",
-      err,
-    );
-    return null;
-  }
+export function isCleaningRelatedActivity(businessActivity: string): boolean {
+  const text = businessActivity.toLowerCase();
+  return CLEANING_BUSINESS_ACTIVITY_KEYWORDS.some((kw) => text.includes(kw));
 }
 
-// Детермінований keyword-фолбек на випадок збою AI. НЕ суміжна фраза
-// (напр. "своєї квартир") — реальний текст часто розриває присвійний
-// займенник і тип житла вставним словом ("своєї 3-кімнатної квартири"),
-// і суміжна фраза це пропускає. Тому перевіряємо СПІВПАДІННЯ двох
-// незалежних маркерів у тексті: присвійний займенник (моя/своя/власна/
-// наша тощо) І тип житла (квартира/будинок/котедж) — байдуже, в якому
-// порядку й на якій відстані. Навмисно ширше, ніж суміжна фраза: це лише
-// фолбек на час недоступності AI, а не основний механізм, тож трохи
-// вищий ризик хибного спрацювання тут прийнятний (веде на ручний
-// розгляд, а не на блок) заради нижчого ризику пропустити реальний кейс.
-const POSSESSIVE_KEYWORDS = [
-  "моя",
-  "моєї",
-  "мого",
-  "моєму",
-  "свого",
-  "своєї",
-  "власна",
-  "власної",
-  "власного",
-  "наш",
-  "нашого",
-  "нашої",
+const RESIDENTIAL_PREMISE_KEYWORDS = [
+  "квартир",
+  "будинок",
+  "будинку",
+  "будинкам",
+  "котедж",
+  "таунхаус",
+  "дачу",
+  "дачі",
+  "дачний будинок",
 ];
 
-const RESIDENCE_PREMISE_KEYWORDS = ["квартир", "будинок", "будинку", "котедж"];
-
-const STANDALONE_PRIVATE_RESIDENCE_PHRASES = [
-  "для сім'ї",
-  "для моєї сім'ї",
-  "для нашої сім'ї",
-];
-
-export function hasObviousPrivateResidenceKeyword(
+export function mentionsResidentialPremise(
   title: string,
   description: string,
 ): boolean {
   const text = `${title} ${description}`.toLowerCase();
-
-  if (STANDALONE_PRIVATE_RESIDENCE_PHRASES.some((kw) => text.includes(kw))) {
-    return true;
-  }
-
-  const hasPossessive = POSSESSIVE_KEYWORDS.some((kw) => text.includes(kw));
-  const hasPremise = RESIDENCE_PREMISE_KEYWORDS.some((kw) =>
-    text.includes(kw),
-  );
-  return hasPossessive && hasPremise;
+  return RESIDENTIAL_PREMISE_KEYWORDS.some((kw) => text.includes(kw));
 }
