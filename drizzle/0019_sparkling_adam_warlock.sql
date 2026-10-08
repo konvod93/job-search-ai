@@ -1,0 +1,1 @@
+ALTER TYPE "public"."job_category" ADD VALUE 'office_administration' BEFORE 'show_business';
