@@ -12,7 +12,7 @@ import {
   hasObviousEntertainmentRoleKeyword,
   matchesLicensedFishingActivity,
   matchesShowBusinessActivity,
-  isCleaningRelatedActivity,
+  matchesFacilityServiceActivity,
   mentionsResidentialPremise,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
@@ -22,6 +22,7 @@ import {
   requiresVerificationOnly,
   isGovernmentAuthorityRole,
   isFishingSubcategory,
+  isFacilityServicePrivateHireRiskSubcategory,
 } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
@@ -336,26 +337,30 @@ export async function PATCH(
       );
     }
 
-    // Клінінг: навіть верифікований ФОП може ховати приватний домашній
-    // найм під виглядом "клінінгу" — див. детальний коментар у
-    // POST /api/jobs та біля isCleaningRelatedActivity/
+    // Клінінг / догляд за територією / обслуговування будівель: навіть
+    // верифікований ФОП може ховати приватний домашній найм під
+    // виглядом бізнес-вакансії — див. детальний коментар у
+    // POST /api/jobs та біля matchesFacilityServiceActivity/
     // mentionsResidentialPremise у trust-gate.ts.
     if (
-      effectiveCategory === "service_staff" &&
-      effectiveSubcategory === "commercial_institutional_cleaning" &&
+      isFacilityServicePrivateHireRiskSubcategory(
+        effectiveCategory,
+        effectiveSubcategory,
+      ) &&
       row.employerType === "fop"
     ) {
       const activity = row.businessActivity?.trim() ?? "";
-      const isOwnBusinessCleaning = !!activity && isCleaningRelatedActivity(activity);
+      const isOwnProfileBusiness =
+        !!activity && matchesFacilityServiceActivity(activity);
 
       if (
-        !isOwnBusinessCleaning &&
+        !isOwnProfileBusiness &&
         mentionsResidentialPremise(title, description)
       ) {
         updates.status = "pending_review";
         updates.moderationCategory = "other";
         updates.moderationReason =
-          'Вакансія в категорії "клінінг" від ФОП, чий заявлений вид діяльності не пов\'язаний з клінінгом/прибиранням, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
+          'Вакансія в категорії "обслуговуючий персонал та клінінг" від ФОП, чий заявлений вид діяльності не пов\'язаний з цією сферою, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
       }
     }
 

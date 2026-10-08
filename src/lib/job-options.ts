@@ -810,12 +810,17 @@ export const JOB_SUBCATEGORIES: Record<
       label:
         "Приватний домашній персонал (хатня робітниця, наглядач за садибою, приватний садівник — лише агенції)",
     },
-    // Гейт нижче (requiresVerificationOnly) — лише верифіковані ФОП/
-    // юрособи, анонімні/неверифіковані акаунти тут публікувати не можуть.
-    // Додатково для ФОП: isCleaningRelatedActivity/mentionsResidentialPremise
+    // Гейт нижче (requiresVerificationOnly) для всіх трьох наступних
+    // підкатегорій — лише верифіковані ФОП/юрособи, анонімні/
+    // неверифіковані акаунти тут публікувати не можуть. Додатково для
+    // ФОП: matchesFacilityServiceActivity/mentionsResidentialPremise
     // (trust-gate.ts) ловлять навіть ВЕРИФІКОВАНОГО ФОП, чий бізнес не
-    // пов'язаний з клінінгом (напр. електрик, СТО), але який публікує
-    // вакансію прибирання приватної квартири/будинку — див. route.ts.
+    // пов'язаний з клінінгом/благоустроєм/обслуговуванням будівель
+    // (напр. електрик, СТО), але який публікує вакансію обслуговування
+    // приватної квартири/будинку — див. route.ts. Усі три підкатегорії
+    // (клінінг, територія, будівлі) об'єднує один і той самий ризик —
+    // садівника, двірника чи майстра "на всі руки" так само легко
+    // замовити й приватному власнику будинку, як і прибиральницю.
     {
       value: "commercial_institutional_cleaning",
       label:
@@ -970,19 +975,43 @@ export function isFishingSubcategory(
 // діяльність, а не анонім".
 const VERIFIED_ONLY_PAIRS = new Set([
   "medical:pharmacy",
-  // Клінінг: ФОП-прибиральниця чи клінінгова компанія — обидва легітимні
-  // (на відміну від AGENCY_ONLY_PAIRS, легальний бізнес-ФОП тут не
-  // заборонений). Але анонімний/неверифікований акаунт — ризик: "ФОП
-  // Іванов шукає прибиральницю в офіс/цех" ок, а просто хтось
+  // Клінінг, догляд за територією, обслуговування будівель: ФОП чи мала
+  // компанія в цій ніші — цілком легітимні (на відміну від
+  // AGENCY_ONLY_PAIRS, легальний бізнес-ФОП тут не заборонений). Але
+  // анонімний/неверифікований акаунт — ризик: "ФОП Іванов шукає
+  // прибиральницю/садівника в офіс/цех/на об'єкт" ок, а просто хтось
   // неверифікований, хто хоче найняти людину додому під виглядом бізнес-
   // вакансії — ні. Додатково — перевірка businessActivity vs текст
-  // вакансії навіть для ВЕРИФІКОВАНИХ ФОП (isCleaningRelatedActivity/
-  // mentionsResidentialPremise у trust-gate.ts): саму верифікацію особи
-  // це не виключає — ФОП може бути цілком реальним верифікованим
-  // електриком чи власником СТО, що зловживає категорією клінінгу для
-  // приватного побутового найму прибиральниці додому.
+  // вакансії навіть для ВЕРИФІКОВАНИХ ФОП
+  // (matchesFacilityServiceActivity/mentionsResidentialPremise у
+  // trust-gate.ts, обидва задіяні через isFacilityServicePrivateHireRiskSubcategory
+  // нижче): саму верифікацію особи це не виключає — ФОП може бути
+  // цілком реальним верифікованим електриком чи власником СТО, що
+  // зловживає цими категоріями для приватного побутового найму
+  // садівника/прибиральниці/майстра "на всі руки" собі додому.
   "service_staff:commercial_institutional_cleaning",
+  "service_staff:grounds_landscaping",
+  "service_staff:building_services_household",
 ]);
+
+// Три підкатегорії вище, де потрібна додаткова перевірка businessActivity
+// vs текст вакансії (для ФОП) — див. коментар над VERIFIED_ONLY_PAIRS.
+const FACILITY_SERVICE_PRIVATE_HIRE_RISK_SUBCATEGORIES = new Set([
+  "commercial_institutional_cleaning",
+  "grounds_landscaping",
+  "building_services_household",
+]);
+
+export function isFacilityServicePrivateHireRiskSubcategory(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return (
+    category === "service_staff" &&
+    !!subcategory &&
+    FACILITY_SERVICE_PRIVATE_HIRE_RISK_SUBCATEGORIES.has(subcategory)
+  );
+}
 
 export function requiresVerificationOnly(
   category: string,
