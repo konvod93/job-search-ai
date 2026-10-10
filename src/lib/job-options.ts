@@ -105,7 +105,7 @@ export const JOB_CATEGORIES = [
   { value: "media", label: "Медіа, журналістика та PR" },
   { value: "service_staff", label: "Обслуговуючий персонал та клінінг" },
   { value: "security", label: "Охорона" },
-  { value: "utilities", label: "ЖКГ та благоустрій" },
+  { value: "utilities", label: "ЖКГ, благоустрій та комунальні служби" },
   { value: "legal", label: "Юридичні працівники" },
   { value: "management_marketing", label: "Менеджмент та маркетинг" },
   { value: "other", label: "Інше" },
@@ -325,6 +325,38 @@ export const JOB_SUBCATEGORIES: Record<
       value: "office_information_customer_support",
       label:
         "Обробка інформації та клієнтська підтримка (диспетчер інформаційного центру / оператор ресепшену на телефоні, реєстратор даних / оператор з введення даних)",
+    },
+  ],
+  // utilities — комунальна сфера: муніципальні підприємства, ЖЕКи, ОСББ,
+  // міські мережі. Відмінність від service_staff:grounds_landscaping
+  // (двірник/садівник у комерційних і приватних замовників) та від
+  // maintenance:maintenance_infrastructure_utilities (котельні й
+  // інженерні мережі ВИРОБНИЧОГО підприємства): тут роботодавець —
+  // комунальна служба чи будинок, а не бізнес зі своїм об'єктом.
+  // Оператор газової та твердопаливної котельні в utilities_city_networks_
+  // generation свідомо перелічені РІЗНО (як і в maintenance): на газовій
+  // немає суттєвого фізичного навантаження, а на твердопаливній оператор
+  // частіше й кочегар — фізично важка праця. Не зводити в одну позицію.
+  utilities: [
+    {
+      value: "utilities_landscaping_green",
+      label:
+        "Благоустрій та зелене господарство (двірник — муніципальний / ОСББ, озеленювач / садівник міських територій, прибиральник міських парків та зон відпочинку, дорожній робітник з благоустрою)",
+    },
+    {
+      value: "utilities_building_engineering",
+      label:
+        "Внутрішньобудинкові інженерні мережі (слюсар-сантехнік ЖЕКу / ОСББ, електромонтер з обслуговування житлового фонду, електромеханік з ліфтів — ліфтер-налагоджувальник, робітник з комплексного обслуговування та ремонту будинків ОСББ)",
+    },
+    {
+      value: "utilities_city_networks_generation",
+      label:
+        "Міські комунальні мережі та генерація (слюсар з ремонту теплових / водопровідних мереж, машиніст насосних установок, оператор газової котельні, оператор твердопаливної котельні, електромонтер повітряних та кабельних ліній, диспетчер аварійно-диспетчерської служби)",
+    },
+    {
+      value: "utilities_sanitation_waste",
+      label:
+        "Санітарія, екологія та поводження з відходами (водій сміттєвоза, вантажник / вантажник-експедитор сміттєвоза, сміттєпровідник / прибиральник сміттєкамер, оператор сміттєсортувальної лінії / робітник полігону утилізації)",
     },
   ],
   // Траст-гейт для ВСІЄЇ категорії show_business (не окремих ролей, як
@@ -1017,14 +1049,32 @@ const VERIFIED_ONLY_PAIRS = new Set([
   "service_staff:commercial_institutional_cleaning",
   "service_staff:grounds_landscaping",
   "service_staff:building_services_household",
+  // ЖКГ: комунальні підприємства, ЖЕКи, ОСББ — юрособи, але підряди на
+  // благоустрій чи обслуговування мереж виконують і бригади-ФОП. Тому
+  // не "лише юрособи", а "лише верифіковані" + та сама додаткова
+  // перевірка для ФОП (див. FACILITY_SERVICE_PRIVATE_HIRE_RISK_PAIRS).
+  "utilities:utilities_landscaping_green",
+  "utilities:utilities_building_engineering",
+  "utilities:utilities_city_networks_generation",
+  "utilities:utilities_sanitation_waste",
 ]);
 
-// Три підкатегорії вище, де потрібна додаткова перевірка businessActivity
-// vs текст вакансії (для ФОП) — див. коментар над VERIFIED_ONLY_PAIRS.
-const FACILITY_SERVICE_PRIVATE_HIRE_RISK_SUBCATEGORIES = new Set([
-  "commercial_institutional_cleaning",
-  "grounds_landscaping",
-  "building_services_household",
+// Підкатегорії вище, де потрібна додаткова перевірка businessActivity vs
+// текст вакансії (для ФОП) — див. коментар над VERIFIED_ONLY_PAIRS.
+// Пари category:subcategory, бо тепер це не лише service_staff, а й
+// комунальна сфера (utilities): там теж працюють бригади-ФОП, і так само
+// може виявитись, що "двірник/слюсар/електромонтер" потрібен не
+// комунальній службі, а приватному власникові. ОСББ, ЖЕКи й комунальні
+// підприємства — завжди юрособи (ФОПом ОСББ бути не може), тому
+// перевірка ФОП-ів їх не зачіпає.
+const FACILITY_SERVICE_PRIVATE_HIRE_RISK_PAIRS = new Set([
+  "service_staff:commercial_institutional_cleaning",
+  "service_staff:grounds_landscaping",
+  "service_staff:building_services_household",
+  "utilities:utilities_landscaping_green",
+  "utilities:utilities_building_engineering",
+  "utilities:utilities_city_networks_generation",
+  "utilities:utilities_sanitation_waste",
 ]);
 
 export function isFacilityServicePrivateHireRiskSubcategory(
@@ -1032,9 +1082,8 @@ export function isFacilityServicePrivateHireRiskSubcategory(
   subcategory: string | null | undefined,
 ): boolean {
   return (
-    category === "service_staff" &&
     !!subcategory &&
-    FACILITY_SERVICE_PRIVATE_HIRE_RISK_SUBCATEGORIES.has(subcategory)
+    FACILITY_SERVICE_PRIVATE_HIRE_RISK_PAIRS.has(`${category}:${subcategory}`)
   );
 }
 

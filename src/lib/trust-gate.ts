@@ -480,6 +480,16 @@ const FACILITY_SERVICE_ACTIVITY_KEYWORDS = [
   "експлуатація будівель",
   "керуюча компанія",
   "комплексне обслуговування",
+  // Комунальна сфера (категорія utilities): профільний ФОП-підрядник
+  // ЖКГ — це довірений бізнес, як і клінінгова компанія.
+  "комунальн",
+  "житлов",
+  "водопостач",
+  "теплопостач",
+  "відход",
+  "сміття",
+  "ліфт",
+  "сантехнічн",
 ];
 
 export function matchesFacilityServiceActivity(
@@ -489,22 +499,27 @@ export function matchesFacilityServiceActivity(
   return FACILITY_SERVICE_ACTIVITY_KEYWORDS.some((kw) => text.includes(kw));
 }
 
+// Корені слів, а не форми: "будинок" (називний) НЕ є підрядком "будинків"/
+// "будинки"/"будинком" — тому і "будинк" (усі непрямі відмінки), і
+// "будинок" (називний/знахідний) окремо. Те саме з "дача" (дачу/дачі/
+// дачею) — але голе "дач" хибно ловило б "передача", тому конкретні
+// форми.
 const RESIDENTIAL_PREMISE_KEYWORDS = [
   "квартир",
   "будинок",
-  "будинку",
-  "будинкам",
+  "будинк",
   "котедж",
   "таунхаус",
-  "дачу",
-  "дачі",
-  "дачний будинок",
+  // Пробіл на початку — межа слова: голе "дач" збігалось би з "передача",
+  // "здача" тощо. Покриває дача/дачу/дачі/дачею/дачний/дачна.
+  " дач",
 ];
 
 export function mentionsResidentialPremise(
   title: string,
   description: string,
 ): boolean {
-  const text = `${title} ${description}`.toLowerCase();
+  // Провідний пробіл потрібен, щоб " дач" ловило й слово на початку тексту.
+  const text = ` ${title} ${description}`.toLowerCase();
   return RESIDENTIAL_PREMISE_KEYWORDS.some((kw) => text.includes(kw));
 }
