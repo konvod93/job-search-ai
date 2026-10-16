@@ -224,6 +224,17 @@ export const employerProfiles = pgTable("employer_profiles", {
   foreignEmploymentLicenseNumber: varchar("foreign_employment_license_number", {
     length: 100,
   }),
+  // Номер запису в реєстрі колекторських компаній НБУ (закон 1349-IX).
+  // Для вакансій підкатегорії legal:legal_debt_collection. Необов'язкове
+  // поле, бо кредитори (банки, фінкомпанії) стягують борги власними
+  // службами й у цьому реєстрі не значаться — тому порожнє значення не
+  // блокує публікацію, а відправляє вакансію на ручний розгляд адміну.
+  // Самодекларується, адмін звіряє з реєстром НБУ під час верифікації
+  // (той самий принцип, що й businessActivity) — тому зміна поля теж
+  // скидає verificationStatus у "pending".
+  collectionRegistryNumber: varchar("collection_registry_number", {
+    length: 100,
+  }),
   // Тип роботодавця — визначає, який документ звіряти і чи платна публікація
   // (див. isFreeTier). Nullable — employer вказує при подачі на верифікацію.
   employerType: employerTypeEnum("employer_type"),

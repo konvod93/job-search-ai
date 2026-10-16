@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -95,6 +95,7 @@ async function getJobWithOwner(jobId: string) {
       businessActivity: employerProfiles.businessActivity,
       foreignEmploymentLicenseNumber:
         employerProfiles.foreignEmploymentLicenseNumber,
+      collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
       banned: employerProfiles.banned,
     })
     .from(jobs)
@@ -316,6 +317,15 @@ export async function PATCH(
       updates.moderationCategory = null;
     }
 
+    // Вимога "вибивати борги" фізичним/силовим впливом — див. POST
+    // /api/jobs та hasPhysicalDebtCollectionPattern у moderation.ts.
+    if (hasPhysicalDebtCollectionPattern(title, description)) {
+      updates.status = "pending_review";
+      updates.moderationCategory = "other";
+      updates.moderationReason =
+        "Вакансія вимагає стягнення боргів із ознаками фізичного/силового тиску або залякування (вибивання боргів) — законна колекторська діяльність таких методів не передбачає. Потрібен ручний розгляд, можливий найм у неправову структуру.";
+    }
+
     const effectiveCategory = parsed.data.category ?? row.job.category;
     const effectiveSubcategory =
       parsed.data.subcategory !== undefined
@@ -363,6 +373,20 @@ export async function PATCH(
         updates.moderationReason =
           'Вакансія від ФОП у сфері обслуговування, клінінгу чи ЖКГ, чий заявлений вид діяльності не пов\'язаний з цією сферою, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
       }
+    }
+
+    // Колектори без номера в реєстрі НБУ — на ручний розгляд, див.
+    // детальний коментар у POST /api/jobs.
+    if (
+      effectiveCategory === "legal" &&
+      effectiveSubcategory === "legal_debt_collection" &&
+      !row.collectionRegistryNumber?.trim() &&
+      updates.status !== "pending_review"
+    ) {
+      updates.status = "pending_review";
+      updates.moderationCategory = "other";
+      updates.moderationReason =
+        "Вакансія колектора від роботодавця без номера в реєстрі колекторських компаній НБУ — потрібно перевірити, що це кредитор (банк/фінкомпанія зі своєю службою стягнення), а не колектор поза реєстром.";
     }
 
     // Крюїнг за кордон — юридична вимога незалежно від isLowTrust, див.
@@ -450,7 +474,7 @@ export async function PATCH(
         return NextResponse.json(
           {
             error:
-              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, якої в ФОП не буває), підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо), або те, що роботодавець — судно/порт (палубна, машинна команда, судновий сервіс, портове господарство — судновласником чи портовим оператором не буває ФОП). Приватний найм фізособою чи ФОП тут не підтримується.",
+              "Ця роль вимагає верифікованої юрособи (не ФОП і не анонімний акаунт) — через один з таких ризиків: прямий приватний найм (домашній персонал/водій/охорона тощо, де потрібен посередник для перевірки кандидатів), регуляторний статус (каса/обмін валют/ломбард вимагають ліцензії, колекторська діяльність — внесення до реєстру НБУ; цього в ФОП не буває), підвищений ризик вербування в трафікінг під легальним на вигляд оголошенням (аніматор/масажист за кордоном тощо), або те, що роботодавець — судно/порт (палубна, машинна команда, судновий сервіс, портове господарство — судновласником чи портовим оператором не буває ФОП). Приватний найм фізособою чи ФОП тут не підтримується.",
           },
           { status: 403 },
         );

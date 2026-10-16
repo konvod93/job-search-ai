@@ -1,0 +1,1 @@
+ALTER TABLE "employer_profiles" ADD COLUMN "collection_registry_number" varchar(100);

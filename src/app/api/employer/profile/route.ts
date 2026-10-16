@@ -38,6 +38,7 @@ const updateSchema = z
       .optional(),
     businessActivity: z.string().max(255).optional(),
     foreignEmploymentLicenseNumber: z.string().max(100).optional(),
+    collectionRegistryNumber: z.string().max(100).optional(),
   })
   .refine(
     (data) => !(data.edrpou && data.edrpou !== "" && !data.employerType),
@@ -90,6 +91,7 @@ export async function PATCH(request: Request) {
       businessActivity: employerProfiles.businessActivity,
       foreignEmploymentLicenseNumber:
         employerProfiles.foreignEmploymentLicenseNumber,
+      collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
     })
@@ -137,6 +139,17 @@ export async function PATCH(request: Request) {
     parsed.data.foreignEmploymentLicenseNumber !== undefined &&
     parsed.data.foreignEmploymentLicenseNumber.trim() !==
       (existing.foreignEmploymentLicenseNumber ?? "") &&
+    verificationStatus !== "unverified"
+  ) {
+    verificationStatus = "pending";
+  }
+
+  // Номер у реєстрі колекторських компаній НБУ — той самий принцип:
+  // адмін звіряє його під час верифікації, тож зміна скидає статус.
+  if (
+    parsed.data.collectionRegistryNumber !== undefined &&
+    parsed.data.collectionRegistryNumber.trim() !==
+      (existing.collectionRegistryNumber ?? "") &&
     verificationStatus !== "unverified"
   ) {
     verificationStatus = "pending";

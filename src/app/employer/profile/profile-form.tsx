@@ -31,6 +31,7 @@ export default function EmployerProfileForm({
     edrpou: string;
     businessActivity: string;
     foreignEmploymentLicenseNumber: string;
+    collectionRegistryNumber: string;
   };
   verificationStatus: VerificationStatus;
   verificationNote: string | null;
@@ -56,6 +57,9 @@ export default function EmployerProfileForm({
   );
   const [foreignEmploymentLicenseNumber, setForeignEmploymentLicenseNumber] =
     useState(initialValues.foreignEmploymentLicenseNumber);
+  const [collectionRegistryNumber, setCollectionRegistryNumber] = useState(
+    initialValues.collectionRegistryNumber,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -81,6 +85,7 @@ export default function EmployerProfileForm({
         edrpou,
         businessActivity,
         foreignEmploymentLicenseNumber,
+        collectionRegistryNumber,
       }),
     });
 
@@ -297,6 +302,30 @@ export default function EmployerProfileForm({
           транспорт&quot;, крюїнг за кордон) — без ліцензії такі вакансії
           публікувати не можна. Адмін звіряє номер при верифікації; зміна
           поля також знову переводить профіль у статус &quot;на розгляді&quot;.
+        </p>
+
+        <label
+          htmlFor="collectionRegistryNumber"
+          className="mt-2 text-sm text-neutral-600"
+        >
+          Номер запису в реєстрі колекторських компаній НБУ
+          (необов&apos;язково)
+        </label>
+        <input
+          id="collectionRegistryNumber"
+          value={collectionRegistryNumber}
+          onChange={(e) => setCollectionRegistryNumber(e.target.value)}
+          placeholder="Номер запису в реєстрі"
+          className="rounded border border-neutral-300 px-3 py-2"
+        />
+        <p className="text-xs text-neutral-500">
+          Для вакансій колекторів (категорія &quot;Юридичні послуги&quot;).
+          Якщо ви колекторська компанія — вкажіть номер із реєстру НБУ. Якщо
+          ви кредитор (банк, фінансова компанія) зі своєю службою
+          стягнення — можна залишити порожнім, але тоді така вакансія піде
+          на ручний розгляд адміну. Адмін звіряє номер при верифікації;
+          зміна поля знову переводить профіль у статус &quot;на
+          розгляді&quot;.
         </p>
         <p
           className={`text-sm font-medium ${

@@ -1,6 +1,6 @@
 {
-  "id": "0a366995-1d66-4c74-8fa4-b85b25206881",
-  "prevId": "2e0c5289-54ca-4954-86c3-142e8c6409cd",
+  "id": "df785be7-2fdb-4050-a849-4862333bbc97",
+  "prevId": "0a366995-1d66-4c74-8fa4-b85b25206881",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -304,6 +304,12 @@
         },
         "foreign_employment_license_number": {
           "name": "foreign_employment_license_number",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "collection_registry_number": {
+          "name": "collection_registry_number",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false

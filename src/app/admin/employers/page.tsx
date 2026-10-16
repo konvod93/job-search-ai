@@ -147,6 +147,32 @@ export default async function AdminEmployersPage() {
                 </p>
               )}
 
+              {(employer.foreignEmploymentLicenseNumber ||
+                employer.collectionRegistryNumber) && (
+                <div className="flex flex-col gap-1 text-sm">
+                  {employer.foreignEmploymentLicenseNumber && (
+                    <p>
+                      Ліцензія Мінекономіки на працевлаштування за кордоном:{" "}
+                      <span className="font-medium">
+                        {employer.foreignEmploymentLicenseNumber}
+                      </span>
+                    </p>
+                  )}
+                  {employer.collectionRegistryNumber && (
+                    <p>
+                      Запис у реєстрі колекторських компаній НБУ:{" "}
+                      <span className="font-medium">
+                        {employer.collectionRegistryNumber}
+                      </span>
+                    </p>
+                  )}
+                  <span className="text-xs text-neutral-500">
+                    Самодекларовані номери — звірте з відповідним реєстром
+                    перед схваленням верифікації.
+                  </span>
+                </div>
+              )}
+
               {employer.employerType === "military_security" && (
                 <p className="text-xs text-blue-800">
                   ℹ️ Військова/силова структура: якщо це офіційний
