@@ -228,3 +228,19 @@ export function hasPhysicalDebtCollectionPattern(
   if (!hasDebtContext) return false;
   return COERCION_PATTERNS.some((re) => re.test(text));
 }
+
+// Вакансія з назвою "Нотаріус" поза державною службою: найм нотаріуса на
+// посаду можливий лише в державній нотаріальній службі (категорія
+// government). Приватний нотаріус — самозайнята особа, яку не можна
+// найняти ні ФОПу, ні юрособі; такий пошук — партнерство, а не вакансія.
+// Перевіряємо ТІЛЬКИ назву: в описі "помічник нотаріуса" чи "разом із
+// нотаріусом" цілком нормальні. Допоміжні ролі (помічник, секретар,
+// асистент, діловод, архіваріус, реєстратор) дозволені — їх наймає
+// приватний нотаріус.
+const NOTARY_SUPPORT_ROLE_PATTERN =
+  /помічник|секретар|асистент|діловод|архів|реєстратор|стажер/;
+
+export function hasNotaryPositionTitle(title: string): boolean {
+  const t = title.toLowerCase();
+  return t.includes("нотаріус") && !NOTARY_SUPPORT_ROLE_PATTERN.test(t);
+}

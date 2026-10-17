@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -373,6 +373,19 @@ export async function PATCH(
         updates.moderationReason =
           'Вакансія від ФОП у сфері обслуговування, клінінгу чи ЖКГ, чий заявлений вид діяльності не пов\'язаний з цією сферою, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
       }
+    }
+
+    // "Нотаріус" як посада поза державною службою — див. POST /api/jobs
+    // та hasNotaryPositionTitle у moderation.ts.
+    if (
+      effectiveCategory !== "government" &&
+      hasNotaryPositionTitle(title) &&
+      updates.status !== "pending_review"
+    ) {
+      updates.status = "pending_review";
+      updates.moderationCategory = "other";
+      updates.moderationReason =
+        'Вакансія "нотаріус" поза державною нотаріальною службою: нотаріус на посаду наймається лише там, а приватний нотаріус — самозайнята особа, і співпраця з ним є партнерством, а не наймом. Якщо потрібен помічник чи секретар нотаріуса — вкажіть це в назві; для державної контори оберіть категорію "Державні органи та служби".';
     }
 
     // Колектори без номера в реєстрі НБУ — на ручний розгляд, див.
