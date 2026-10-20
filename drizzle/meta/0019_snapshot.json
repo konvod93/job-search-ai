@@ -1,6 +1,6 @@
 {
-  "id": "df785be7-2fdb-4050-a849-4862333bbc97",
-  "prevId": "0a366995-1d66-4c74-8fa4-b85b25206881",
+  "id": "0c64603e-e298-4928-9169-3304280b9890",
+  "prevId": "df785be7-2fdb-4050-a849-4862333bbc97",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -310,6 +310,12 @@
         },
         "collection_registry_number": {
           "name": "collection_registry_number",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "medical_license_number": {
+          "name": "medical_license_number",
           "type": "varchar(100)",
           "primaryKey": false,
           "notNull": false

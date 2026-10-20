@@ -148,7 +148,8 @@ export default async function AdminEmployersPage() {
               )}
 
               {(employer.foreignEmploymentLicenseNumber ||
-                employer.collectionRegistryNumber) && (
+                employer.collectionRegistryNumber ||
+                employer.medicalLicenseNumber) && (
                 <div className="flex flex-col gap-1 text-sm">
                   {employer.foreignEmploymentLicenseNumber && (
                     <p>
@@ -163,6 +164,14 @@ export default async function AdminEmployersPage() {
                       Запис у реєстрі колекторських компаній НБУ:{" "}
                       <span className="font-medium">
                         {employer.collectionRegistryNumber}
+                      </span>
+                    </p>
+                  )}
+                  {employer.medicalLicenseNumber && (
+                    <p>
+                      Ліцензія на медичну практику:{" "}
+                      <span className="font-medium">
+                        {employer.medicalLicenseNumber}
                       </span>
                     </p>
                   )}

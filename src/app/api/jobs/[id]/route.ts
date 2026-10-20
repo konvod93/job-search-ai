@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle, hasIllegalMedicalPracticePattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -14,6 +14,8 @@ import {
   matchesShowBusinessActivity,
   matchesFacilityServiceActivity,
   mentionsResidentialPremise,
+  findNarrowSpecialistInTitle,
+  matchesMedicalActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -23,6 +25,7 @@ import {
   isGovernmentAuthorityRole,
   isFishingSubcategory,
   isFacilityServicePrivateHireRiskSubcategory,
+  requiresMedicalLicense,
 } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
@@ -96,6 +99,7 @@ async function getJobWithOwner(jobId: string) {
       foreignEmploymentLicenseNumber:
         employerProfiles.foreignEmploymentLicenseNumber,
       collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
+      medicalLicenseNumber: employerProfiles.medicalLicenseNumber,
       banned: employerProfiles.banned,
     })
     .from(jobs)
@@ -372,6 +376,52 @@ export async function PATCH(
         updates.moderationCategory = "other";
         updates.moderationReason =
           'Вакансія від ФОП у сфері обслуговування, клінінгу чи ЖКГ, чий заявлений вид діяльності не пов\'язаний з цією сферою, а текст описує приватний житловий об\'єкт (квартира/будинок/котедж) — схоже на приватний найм під виглядом бізнес-категорії. Потрібен ручний розгляд.';
+      }
+    }
+
+    // Медицина: ліцензія на медичну практику обов'язкова для будь-якого
+    // роботодавця (зокрема зі штатним медпунктом) — див. POST /api/jobs.
+    if (
+      requiresMedicalLicense(effectiveCategory, effectiveSubcategory) &&
+      !row.medicalLicenseNumber?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Публікація вакансій лікарів і медперсоналу вимагає ліцензії на господарську діяльність з медичної практики. Вкажіть номер ліцензії у профілі роботодавця. Це стосується й підприємств зі штатним медпунктом; якщо медогляди на аутсорсі, вакансію публікує медзаклад, що їх виконує.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // Ознаки нелегальної медичної практики — див. POST /api/jobs.
+    if (hasIllegalMedicalPracticePattern(title, description)) {
+      updates.status = "pending_review";
+      updates.moderationCategory = "other";
+      updates.moderationReason =
+        "Вакансія медпрацівника з ознаками нелегальної медичної практики (допомога пораненим без звернення до правоохоронців, підпільна клініка чи нелегальна трансплантація). Потрібен ручний розгляд.";
+    }
+
+    // Вузький спеціаліст на повну ставку у не-медичного роботодавця —
+    // див. POST /api/jobs та findNarrowSpecialistInTitle у trust-gate.ts.
+    const effectiveEmploymentType =
+      parsed.data.employmentType ?? row.job.employmentType;
+    if (
+      effectiveCategory === "medical" &&
+      (effectiveSubcategory === "doctors" ||
+        effectiveSubcategory === "occupational_industrial_medicine") &&
+      effectiveEmploymentType === "full_time" &&
+      updates.status !== "pending_review"
+    ) {
+      const narrow = findNarrowSpecialistInTitle(title);
+      const activity = row.businessActivity?.trim() ?? "";
+      const isMedicalEmployer = !!activity && matchesMedicalActivity(activity);
+      const isCompanyMedpunkt =
+        effectiveSubcategory === "occupational_industrial_medicine";
+      if (narrow && !isMedicalEmployer && (isCompanyMedpunkt || !!activity)) {
+        updates.status = "pending_review";
+        updates.moderationCategory = "other";
+        updates.moderationReason = `Можлива помилка: вузький спеціаліст ("${narrow}") на повну зайнятість у медпункт підприємства виглядає сумнівно — таких лікарів зазвичай залучають за сумісництвом або за договором. Скоріш за все, малося на увазі роботу за сумісництвом. Змініть тип зайнятості або підтвердіть потребу — вакансію відправлено на перевірку.`;
       }
     }
 

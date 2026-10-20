@@ -39,6 +39,7 @@ const updateSchema = z
     businessActivity: z.string().max(255).optional(),
     foreignEmploymentLicenseNumber: z.string().max(100).optional(),
     collectionRegistryNumber: z.string().max(100).optional(),
+    medicalLicenseNumber: z.string().max(100).optional(),
   })
   .refine(
     (data) => !(data.edrpou && data.edrpou !== "" && !data.employerType),
@@ -92,6 +93,7 @@ export async function PATCH(request: Request) {
       foreignEmploymentLicenseNumber:
         employerProfiles.foreignEmploymentLicenseNumber,
       collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
+      medicalLicenseNumber: employerProfiles.medicalLicenseNumber,
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
     })
@@ -150,6 +152,17 @@ export async function PATCH(request: Request) {
     parsed.data.collectionRegistryNumber !== undefined &&
     parsed.data.collectionRegistryNumber.trim() !==
       (existing.collectionRegistryNumber ?? "") &&
+    verificationStatus !== "unverified"
+  ) {
+    verificationStatus = "pending";
+  }
+
+  // Номер ліцензії на медичну практику — адмін звіряє з ліцензійним
+  // реєстром, тож зміна теж скидає статус.
+  if (
+    parsed.data.medicalLicenseNumber !== undefined &&
+    parsed.data.medicalLicenseNumber.trim() !==
+      (existing.medicalLicenseNumber ?? "") &&
     verificationStatus !== "unverified"
   ) {
     verificationStatus = "pending";

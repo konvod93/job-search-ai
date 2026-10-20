@@ -32,6 +32,7 @@ export default function EmployerProfileForm({
     businessActivity: string;
     foreignEmploymentLicenseNumber: string;
     collectionRegistryNumber: string;
+    medicalLicenseNumber: string;
   };
   verificationStatus: VerificationStatus;
   verificationNote: string | null;
@@ -60,6 +61,9 @@ export default function EmployerProfileForm({
   const [collectionRegistryNumber, setCollectionRegistryNumber] = useState(
     initialValues.collectionRegistryNumber,
   );
+  const [medicalLicenseNumber, setMedicalLicenseNumber] = useState(
+    initialValues.medicalLicenseNumber,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -86,6 +90,7 @@ export default function EmployerProfileForm({
         businessActivity,
         foreignEmploymentLicenseNumber,
         collectionRegistryNumber,
+        medicalLicenseNumber,
       }),
     });
 
@@ -326,6 +331,27 @@ export default function EmployerProfileForm({
           на ручний розгляд адміну. Адмін звіряє номер при верифікації;
           зміна поля знову переводить профіль у статус &quot;на
           розгляді&quot;.
+        </p>
+
+        <label
+          htmlFor="medicalLicenseNumber"
+          className="mt-2 text-sm text-neutral-600"
+        >
+          Номер ліцензії на медичну практику (необов&apos;язково)
+        </label>
+        <input
+          id="medicalLicenseNumber"
+          value={medicalLicenseNumber}
+          onChange={(e) => setMedicalLicenseNumber(e.target.value)}
+          placeholder="Номер ліцензії"
+          className="rounded border border-neutral-300 px-3 py-2"
+        />
+        <p className="text-xs text-neutral-500">
+          Обов&apos;язковий для вакансій лікарів і медперсоналу (категорія
+          &quot;Медицина&quot;): медична практика без ліцензії незаконна.
+          Це стосується й підприємств зі штатним медпунктом (не аутсорс).
+          Адмін звіряє номер з ліцензійним реєстром при верифікації; зміна
+          поля знову переводить профіль у статус &quot;на розгляді&quot;.
         </p>
         <p
           className={`text-sm font-medium ${

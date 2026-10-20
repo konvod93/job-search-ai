@@ -1,0 +1,1 @@
+ALTER TABLE "employer_profiles" ADD COLUMN "medical_license_number" varchar(100);

@@ -49,6 +49,7 @@ export default async function EmployerProfilePage() {
           foreignEmploymentLicenseNumber:
             profile.foreignEmploymentLicenseNumber ?? "",
           collectionRegistryNumber: profile.collectionRegistryNumber ?? "",
+          medicalLicenseNumber: profile.medicalLicenseNumber ?? "",
         }}
         verificationStatus={profile.verificationStatus}
         verificationNote={profile.verificationNote}

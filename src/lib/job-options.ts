@@ -1138,7 +1138,32 @@ const VERIFIED_ONLY_PAIRS = new Set([
   "legal:legal_advocacy_litigation",
   "legal:legal_notary_registration",
   "legal:legal_support_administration",
+  // Медицина (лікарі, середній персонал, медицина підприємств): без
+  // верифікації не можна; додатково потрібен номер ліцензії —
+  // requiresMedicalLicense нижче. Аптека вже вище зі своєю фармліцензією.
+  "medical:doctors",
+  "medical:mid_junior_medical",
+  "medical:occupational_industrial_medicine",
 ]);
+
+// Підкатегорії medical, де роботодавець має мати ліцензію на медичну
+// практику (employerProfiles.medicalLicenseNumber). Охоплює й підприємство
+// зі ШТАТНИМ медпунктом (не аутсорс): воно теж веде медичну практику, тож
+// теж потребує ліцензії. Якщо медогляди на аутсорсі — вакансію публікує
+// сам медзаклад. Це тільки підкатегорії, де наймають лікарів/медперсонал:
+// аптека має свою (фарм)ліцензію, санепідслужба — гейт державних органів.
+const MEDICAL_LICENSE_PAIRS = new Set([
+  "medical:doctors",
+  "medical:mid_junior_medical",
+  "medical:occupational_industrial_medicine",
+]);
+
+export function requiresMedicalLicense(
+  category: string,
+  subcategory: string | null | undefined,
+): boolean {
+  return !!subcategory && MEDICAL_LICENSE_PAIRS.has(`${category}:${subcategory}`);
+}
 
 // Підкатегорії вище, де потрібна додаткова перевірка businessActivity vs
 // текст вакансії (для ФОП) — див. коментар над VERIFIED_ONLY_PAIRS.

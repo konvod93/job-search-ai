@@ -235,6 +235,16 @@ export const employerProfiles = pgTable("employer_profiles", {
   collectionRegistryNumber: varchar("collection_registry_number", {
     length: 100,
   }),
+  // Номер ліцензії на господарську діяльність з медичної практики. Для
+  // вакансій лікарів/медперсоналу (category=medical: doctors,
+  // mid_junior_medical, occupational_industrial_medicine) обов'язковий для
+  // БУДЬ-ЯКОГО роботодавця, зокрема підприємства зі штатним медпунктом
+  // (не аутсорс) — медпрактика без ліцензії незаконна, а лікарів без
+  // ліцензованого роботодавця шукають і кримінальні структури (допомога
+  // пораненим поза законом, нелегальна трансплантація). Самодекларується,
+  // адмін звіряє з ліцензійним реєстром під час верифікації (той самий
+  // принцип, що й businessActivity) — тому зміна скидає verificationStatus.
+  medicalLicenseNumber: varchar("medical_license_number", { length: 100 }),
   // Тип роботодавця — визначає, який документ звіряти і чи платна публікація
   // (див. isFreeTier). Nullable — employer вказує при подачі на верифікацію.
   employerType: employerTypeEnum("employer_type"),

@@ -134,6 +134,13 @@
       "when": 1787394809522,
       "tag": "0018_steady_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792497898203,
+      "tag": "0019_familiar_the_phantom",
+      "breakpoints": true
     }
   ]
 }
