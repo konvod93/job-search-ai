@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle, hasIllegalMedicalPracticePattern } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle, hasIllegalMedicalPracticePattern, hasPrivateHomeCarePattern } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -16,6 +16,7 @@ import {
   mentionsResidentialPremise,
   findNarrowSpecialistInTitle,
   matchesMedicalActivity,
+  isNurseOrSitterTitle,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -415,6 +416,45 @@ export async function POST(request: Request) {
         },
         { status: 403 },
       );
+    }
+
+    // Медсестра / медбрат / сиділка поза категорією "Медицина": без цього
+    // приватна особа, що шукає медсестру робити уколи діду чи сиділку,
+    // обирає будь-яку категорію без гейту. Така вакансія — теж медична
+    // практика: лише верифікований роботодавець з ліцензією. Військова
+    // категорія виключена (військові шпиталі — окремий гейт юрособи).
+    if (
+      parsed.data.category !== "medical" &&
+      parsed.data.category !== "military" &&
+      isNurseOrSitterTitle(parsed.data.title) &&
+      (employerProfile.verificationStatus !== "verified" ||
+        !employerProfile.medicalLicenseNumber?.trim())
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Вакансії медсестер, медбратів і сиділок — це медична практика: публікуйте їх у категорії "Медицина та охорона здоров\'я" як верифікований роботодавець з ліцензією (номер ліцензії вкажіть у профілі). Пошук медсестри чи сиділки для догляду вдома приватною особою на платформі не підтримується.',
+        },
+        { status: 403 },
+      );
+    }
+
+    // Догляд за конкретним родичем замовника в медичній вакансії від
+    // не-медичного роботодавця — ознака приватного найму. Медичний
+    // роботодавець (клініка, лікарня) не перевіряється: там тексти про
+    // пацієнтів звичайні.
+    if (
+      parsed.data.category === "medical" &&
+      status !== "pending_review" &&
+      hasPrivateHomeCarePattern(parsed.data.title, parsed.data.description)
+    ) {
+      const activity = employerProfile.businessActivity?.trim() ?? "";
+      if (!(activity && matchesMedicalActivity(activity))) {
+        status = "pending_review";
+        moderationCategory = "other";
+        moderationReason =
+          "Вакансія медпрацівника описує догляд за конкретним родичем замовника (приватний найм) від роботодавця, чий заявлений вид діяльності не медичний. Потрібен ручний розгляд.";
+      }
     }
 
     // Ознаки нелегальної медичної практики (допомога пораненим поза
