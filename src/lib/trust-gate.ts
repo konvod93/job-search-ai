@@ -622,3 +622,61 @@ export function isNurseOrSitterTitle(title: string): boolean {
   // догляд за хворим/літнім/лежачим як посада
   return /доглядальниц\S*\s+(за\s+)?(хвор|літн|лежач|похил)/.test(normalized);
 }
+
+// Чи вакансія за НАЗВОЮ — медична практика, що потребує ліцензії.
+// Медсестра/медбрат — завжди. Сиділка/доглядальниця/санітар — залежить
+// від обов'язків: з медичними маніпуляціями це медпрацівник, а побутовий
+// догляд (готування, прибирання, супровід) — не медична діяльність.
+// Тому в підкатегорії service_staff:patronage_social_care побутові
+// ролі (сиділка, доглядальниця, санітар хоспісу) дозволені без ліцензії —
+// там перевіряється лише медсестра/медбрат. В усіх інших категоріях
+// (крім medical та military) будь-яка з цих ролей вимагає ліцензії.
+const NURSE_ONLY_WORDS = new Set([
+  "медсестра", "медсестри", "медсестру", "медсестрі", "медсестрою", "медсестер",
+  "медбрат", "медбрата", "медбратів", "медбратом", "медбраті",
+]);
+
+function isNurseTitle(title: string): boolean {
+  const normalized = title.toLowerCase().replace(/[^а-яіїєґ]+/g, " ").trim();
+  if (normalized.split(" ").some((w) => NURSE_ONLY_WORDS.has(w))) return true;
+  return /медичн\S*\s+(сестр\S*|брат\S*)/.test(normalized);
+}
+
+export function titleImpliesMedicalPractice(
+  category: string,
+  subcategory: string | null | undefined,
+  title: string,
+): boolean {
+  if (category === "medical" || category === "military") return false;
+  if (category === "service_staff" && subcategory === "patronage_social_care") {
+    return isNurseTitle(title);
+  }
+  return isNurseOrSitterTitle(title);
+}
+
+// Чи заявлений вид діяльності ФОП узгоджується з наданням послуг
+// догляду (патронаж): догляд за особами похилого віку/хворими,
+// соціальна допомога, пансіонат/хоспіс — або медична практика (ФОП-
+// медсестра з ліцензією теж може наймати помічників). Без цього ФОП з
+// виду діяльності "електромонтаж" чи "торгівля", що шукає "доглядальницю"
+// — це ознака приватного найму під прикриттям. Ключові слова — корені,
+// щоб покрити відмінки (догляду/доглядальниця/доглядати).
+const CARE_SERVICE_ACTIVITY_KEYWORDS = [
+  "догляд",
+  "доглядальн",
+  "патронаж",
+  "соціальн",
+  "опік",
+  "похилого віку",
+  "хоспіс",
+  "пансіонат",
+  "соціальна допомога",
+];
+
+export function matchesCareServiceActivity(businessActivity: string): boolean {
+  const t = businessActivity.toLowerCase();
+  return (
+    CARE_SERVICE_ACTIVITY_KEYWORDS.some((kw) => t.includes(kw)) ||
+    matchesMedicalActivity(businessActivity)
+  );
+}

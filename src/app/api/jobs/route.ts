@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles, jobs } from "@/db/schema";
 import { generateEmbedding } from "@/lib/embeddings";
-import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle, hasIllegalMedicalPracticePattern, hasPrivateHomeCarePattern } from "@/lib/moderation";
+import { moderateJobListing, hasObviousExploitationRiskPattern, hasBannedRepertoireRiskPattern, hasPhysicalDebtCollectionPattern, hasNotaryPositionTitle, hasIllegalMedicalPracticePattern, hasPrivateHomeCarePattern, mentionsMedicalManipulations, mentionsCareMonitoring } from "@/lib/moderation";
 import {
   checkTrustGate,
   checkBusinessActivityMismatch,
@@ -16,7 +16,8 @@ import {
   mentionsResidentialPremise,
   findNarrowSpecialistInTitle,
   matchesMedicalActivity,
-  isNurseOrSitterTitle,
+  titleImpliesMedicalPractice,
+  matchesCareServiceActivity,
 } from "@/lib/trust-gate";
 import { checkBundledRoles } from "@/lib/bundled-roles-check";
 import {
@@ -424,16 +425,18 @@ export async function POST(request: Request) {
     // практика: лише верифікований роботодавець з ліцензією. Військова
     // категорія виключена (військові шпиталі — окремий гейт юрособи).
     if (
-      parsed.data.category !== "medical" &&
-      parsed.data.category !== "military" &&
-      isNurseOrSitterTitle(parsed.data.title) &&
+      titleImpliesMedicalPractice(
+        parsed.data.category,
+        parsed.data.subcategory,
+        parsed.data.title,
+      ) &&
       (employerProfile.verificationStatus !== "verified" ||
         !employerProfile.medicalLicenseNumber?.trim())
     ) {
       return NextResponse.json(
         {
           error:
-            'Вакансії медсестер, медбратів і сиділок — це медична практика: публікуйте їх у категорії "Медицина та охорона здоров\'я" як верифікований роботодавець з ліцензією (номер ліцензії вкажіть у профілі). Пошук медсестри чи сиділки для догляду вдома приватною особою на платформі не підтримується.',
+            'Вакансії медсестер, медбратів і сиділок — це медична практика: публікуйте їх у категорії "Медицина та охорона здоров\'я" як верифікований роботодавець з ліцензією (номер ліцензії вкажіть у профілі). Побутовий догляд без медичних маніпуляцій (готування, прибирання, супровід) публікують верифіковані агенції та ФОП з відповідним видом діяльності в підкатегорії патронажного догляду категорії \"Обслуговуючий персонал та клінінг\". Пошук медсестри чи сиділки для догляду вдома приватною особою на платформі не підтримується.',
         },
         { status: 403 },
       );
@@ -443,18 +446,73 @@ export async function POST(request: Request) {
     // не-медичного роботодавця — ознака приватного найму. Медичний
     // роботодавець (клініка, лікарня) не перевіряється: там тексти про
     // пацієнтів звичайні.
+    const isPatronage =
+      parsed.data.category === "service_staff" &&
+      parsed.data.subcategory === "patronage_social_care";
     if (
-      parsed.data.category === "medical" &&
+      (parsed.data.category === "medical" || isPatronage) &&
       status !== "pending_review" &&
       hasPrivateHomeCarePattern(parsed.data.title, parsed.data.description)
     ) {
       const activity = employerProfile.businessActivity?.trim() ?? "";
-      if (!(activity && matchesMedicalActivity(activity))) {
+      // Для медичного роботодавця (клініка) такі тексти звичайні; для
+      // агенції патронажу винятку немає — вона не пише "мого діда".
+      if (isPatronage || !(activity && matchesMedicalActivity(activity))) {
         status = "pending_review";
         moderationCategory = "other";
         moderationReason =
-          "Вакансія медпрацівника описує догляд за конкретним родичем замовника (приватний найм) від роботодавця, чий заявлений вид діяльності не медичний. Потрібен ручний розгляд.";
+          "Вакансія догляду описує догляд за конкретним родичем замовника — ознака приватного найму, а не роботи агенції чи закладу. Потрібен ручний розгляд.";
       }
+    }
+
+    // ФОП у патронажі: надання послуг догляду — легальна діяльність, але
+    // лише якщо заявлений вид діяльності це підтверджує (догляд/
+    // соціальна допомога/медична практика). Інакше це приватна особа з
+    // ФОП в іншій сфері (електрик, торгівля), що шукає доглядальницю
+    // собі. Юросіб ця перевірка не стосується.
+    if (isPatronage && employerProfile.employerType === "fop") {
+      const careActivity = employerProfile.businessActivity?.trim() ?? "";
+      if (!careActivity || !matchesCareServiceActivity(careActivity)) {
+        return NextResponse.json(
+          {
+            error:
+              'Публікація вакансій доглядальниці від ФОП можлива, лише якщо заявлений вид діяльності це підтверджує (догляд за особами похилого віку/хворими, соціальна допомога тощо). Оновіть поле "Вид діяльності" у профілі — це знову відправить профіль на верифікацію адміном.',
+          },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Медичні маніпуляції (уколи, крапельниці, ін'єкції, перев'язки,
+    // катетер, медичні процедури, реабілітація) в обов'язках: це вже
+    // медпрацівник, і роботодавець (ФОП чи юрособа) має мати ліцензію на
+    // медичну практику. Лише побутові обов'язки ліцензії не потребують.
+    // М'яко (модерація), бо детекція за ключовими словами. Ліцензований
+    // роботодавець — без перевірки.
+    if (
+      isPatronage &&
+      status !== "pending_review" &&
+      !employerProfile.medicalLicenseNumber?.trim() &&
+      mentionsMedicalManipulations(parsed.data.title, parsed.data.description)
+    ) {
+      status = "pending_review";
+      moderationCategory = "other";
+      moderationReason =
+        "Вакансія патронажного догляду містить медичні маніпуляції (ін'єкції, перев'язки, катетери тощо) або вимагає медичної кваліфікації (медсестра/медбрат, диплом, медична освіта), але роботодавець без ліцензії на медичну практику. Така сиділка — медпрацівник: вакансію слід публікувати в категорії \"Медицина\" від ліцензованого роботодавця, або прибрати медичні обов'язки. Потрібен ручний розгляд.";
+    }
+
+    // Змішаний варіант: побутова доглядальниця, але є вимірювання
+    // тиску/цукру, журнал спостереження — завжди на модерацію (незалежно
+    // від ліцензії), бо це межа між побутовим і медичним доглядом.
+    if (
+      isPatronage &&
+      status !== "pending_review" &&
+      mentionsCareMonitoring(parsed.data.title, parsed.data.description)
+    ) {
+      status = "pending_review";
+      moderationCategory = "other";
+      moderationReason =
+        "Вакансія подана як побутовий догляд, але серед обов'язків є моніторинг стану здоров'я (вимірювання тиску чи цукру, журнал спостереження). Це межовий випадок між побутовим доглядом і медичною діяльністю — потрібен ручний розгляд.";
     }
 
     // Ознаки нелегальної медичної практики (допомога пораненим поза
