@@ -4,7 +4,10 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { employerProfiles } from "@/db/schema";
-import { FREE_TIER_EMPLOYER_TYPES } from "@/lib/job-options";
+import {
+  FREE_TIER_EMPLOYER_TYPES,
+  WORK_ABROAD_COUNTRY_CODES,
+} from "@/lib/job-options";
 
 const EMPLOYER_TYPE_VALUES = [
   "commercial",
@@ -37,7 +40,19 @@ const updateSchema = z
       )
       .optional(),
     businessActivity: z.string().max(255).optional(),
-    foreignEmploymentLicenseNumber: z.string().max(100).optional(),
+    // Дата включення до Переліку посередників Мінекономіки (YYYY-MM-DD),
+    // порожній рядок = не вказано. Не може бути в майбутньому.
+    intermediaryListDate: z
+      .string()
+      .refine((val) => {
+        if (val === "") return true;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false;
+        const d = new Date(`${val}T00:00:00Z`);
+        return !Number.isNaN(d.getTime()) && d.getTime() <= Date.now();
+      }, "Вкажіть коректну дату (РРРР-ММ-ДД), не пізніше за сьогодні")
+      .optional(),
+    intermediaryCountries: z.array(z.enum(WORK_ABROAD_COUNTRY_CODES)).optional(),
+    mlcCertificate: z.string().max(100).optional(),
     collectionRegistryNumber: z.string().max(100).optional(),
     medicalLicenseNumber: z.string().max(100).optional(),
   })
@@ -90,8 +105,9 @@ export async function PATCH(request: Request) {
     .select({
       edrpou: employerProfiles.edrpou,
       businessActivity: employerProfiles.businessActivity,
-      foreignEmploymentLicenseNumber:
-        employerProfiles.foreignEmploymentLicenseNumber,
+      intermediaryListDate: employerProfiles.intermediaryListDate,
+      intermediaryCountries: employerProfiles.intermediaryCountries,
+      mlcCertificate: employerProfiles.mlcCertificate,
       collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
       medicalLicenseNumber: employerProfiles.medicalLicenseNumber,
       employerType: employerProfiles.employerType,
@@ -133,16 +149,23 @@ export async function PATCH(request: Request) {
     verificationStatus = "pending";
   }
 
-  // Той самий принцип для номера ліцензії Мінекономіки на крюїнг —
-  // адмін звіряє його під час верифікації, тож зміна поля теж скидає
-  // статус (інакше можна вписати довільний номер заднім числом і обійти
-  // гейт для вакансій на іноземні судна, див. isForeignVesselCrewing).
-  if (
-    parsed.data.foreignEmploymentLicenseNumber !== undefined &&
-    parsed.data.foreignEmploymentLicenseNumber.trim() !==
-      (existing.foreignEmploymentLicenseNumber ?? "") &&
-    verificationStatus !== "unverified"
-  ) {
+  // Посередництво у працевлаштуванні за кордоном: дата включення до
+  // Переліку Мінекономіки, країни з декларації та сертифікат MLC адмін
+  // звіряє під час верифікації — тож зміна будь-якого з них скидає
+  // статус (інакше можна було б заднім числом дописати країну під
+  // конкретну вакансію й обійти гейт, див. workAbroadCountry).
+  const sortedCodes = (a: readonly string[] | null | undefined) =>
+    [...(a ?? [])].sort().join(",");
+  const intermediaryChanged =
+    (parsed.data.intermediaryListDate !== undefined &&
+      parsed.data.intermediaryListDate.trim() !==
+        (existing.intermediaryListDate ?? "")) ||
+    (parsed.data.intermediaryCountries !== undefined &&
+      sortedCodes(parsed.data.intermediaryCountries) !==
+        sortedCodes(existing.intermediaryCountries)) ||
+    (parsed.data.mlcCertificate !== undefined &&
+      parsed.data.mlcCertificate.trim() !== (existing.mlcCertificate ?? ""));
+  if (intermediaryChanged && verificationStatus !== "unverified") {
     verificationStatus = "pending";
   }
 

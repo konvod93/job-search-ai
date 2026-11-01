@@ -1290,3 +1290,167 @@ export function suggestsCivilianCateringInMilitaryCategory(
   );
   return hasInstitutionKeyword && hasCateringRoleKeyword;
 }
+
+// ---------------------------------------------------------------------------
+// Працевлаштування за кордоном
+// ---------------------------------------------------------------------------
+// Посередник у працевлаштуванні за кордоном має право працювати лише
+// після включення до Переліку Мінекономіки (ліцензування скасоване
+// законом 2982-IX від 20.03.2023) і лише в межах укладених ЗЕД-договорів —
+// тобто в ті країни, які вказав у декларації. Це стосується будь-яких
+// вакансій за кордоном: виробництво/будівництво в Польщі, патронажні
+// працівниці в Італії чи Німеччині, HoReCa в Туреччині, крюїнг.
+//
+// value — код ISO alpha-2 (стабільний ключ у БД), label — для UI. roots —
+// корені слів для розпізнавання країни в тексті ("в Польщі", "до
+// Німеччини"): збіг, якщо слово починається з кореня й довше за нього не
+// більш ніж на 2 літери — так "італією" збігається, а "італійський" ні
+// (інакше "італійська кухня" в Києві вважалась би роботою за кордоном).
+// exact — для слів, де корінь дав би хибні збіги ("дані" = data).
+export const WORK_ABROAD_COUNTRIES = [
+  { value: "PL", label: "Польща", roots: ["польщ"] },
+  { value: "DE", label: "Німеччина", roots: ["німеччин"] },
+  { value: "IT", label: "Італія", roots: ["італі"] },
+  { value: "TR", label: "Туреччина", roots: ["туреччин"] },
+  { value: "CZ", label: "Чехія", roots: ["чехі"] },
+  { value: "ES", label: "Іспанія", roots: ["іспані"] },
+  { value: "PT", label: "Португалія", roots: ["португалі"] },
+  { value: "LT", label: "Литва", roots: ["литв"] },
+  { value: "LV", label: "Латвія", roots: ["латві"] },
+  { value: "EE", label: "Естонія", roots: ["естоні"] },
+  { value: "RO", label: "Румунія", roots: ["румуні"] },
+  { value: "SK", label: "Словаччина", roots: ["словаччин"] },
+  { value: "HU", label: "Угорщина", roots: ["угорщин"] },
+  { value: "BG", label: "Болгарія", roots: ["болгарі"] },
+  { value: "FR", label: "Франція", roots: ["франці"] },
+  { value: "NL", label: "Нідерланди", roots: ["нідерланд"] },
+  { value: "BE", label: "Бельгія", roots: ["бельгі"] },
+  { value: "AT", label: "Австрія", roots: ["австрі"] },
+  { value: "CH", label: "Швейцарія", roots: ["швейцарі"] },
+  { value: "GB", label: "Велика Британія", roots: ["британі", "англі"] },
+  { value: "IE", label: "Ірландія", roots: ["ірланді"] },
+  { value: "GR", label: "Греція", roots: ["греці"] },
+  { value: "SE", label: "Швеція", roots: ["швеці"] },
+  { value: "NO", label: "Норвегія", roots: ["норвегі"] },
+  {
+    value: "DK",
+    label: "Данія",
+    roots: [],
+    exact: ["данія", "данії", "данію", "данією"],
+  },
+  { value: "FI", label: "Фінляндія", roots: ["фінлянді"] },
+  { value: "CY", label: "Кіпр", roots: ["кіпр"] },
+  { value: "HR", label: "Хорватія", roots: ["хорваті"] },
+  { value: "SI", label: "Словенія", roots: ["словені"] },
+  { value: "IL", label: "Ізраїль", roots: ["ізраїл"] },
+  {
+    value: "AE",
+    label: "ОАЕ",
+    roots: [],
+    exact: ["оае", "емірати", "еміратах", "еміратів"],
+  },
+  { value: "US", label: "США", roots: [], exact: ["сша"] },
+  { value: "CA", label: "Канада", roots: ["канад"] },
+  { value: "JP", label: "Японія", roots: ["японі"] },
+  {
+    value: "KR",
+    label: "Південна Корея",
+    roots: [],
+    exact: ["корея", "кореї", "корею", "кореєю"],
+  },
+  // Країни прапора / судновласника — для крюїнгу.
+  { value: "PA", label: "Панама", roots: ["панам"] },
+  { value: "LR", label: "Ліберія", roots: ["лібері"] },
+  { value: "MT", label: "Мальта", roots: ["мальт"] },
+  {
+    value: "MH",
+    label: "Маршаллові Острови",
+    roots: [],
+    exact: ["маршаллові", "маршаллових"],
+  },
+  { value: "SG", label: "Сінгапур", roots: ["сінгапур"] },
+] as const;
+
+export const WORK_ABROAD_COUNTRY_CODES = WORK_ABROAD_COUNTRIES.map(
+  (c) => c.value,
+) as unknown as [string, ...string[]];
+
+export const WORK_ABROAD_COUNTRY_LABELS: Record<string, string> =
+  Object.fromEntries(WORK_ABROAD_COUNTRIES.map((c) => [c.value, c.label]));
+
+type CountryEntry = {
+  value: string;
+  label: string;
+  roots: readonly string[];
+  exact?: readonly string[];
+};
+
+// Коди країн, згаданих у тексті (назва, локація, опис).
+export function detectForeignCountryCodes(text: string): string[] {
+  const words = text
+    .toLowerCase()
+    .replace(/[^а-яіїєґ]+/g, " ")
+    .split(" ")
+    .filter(Boolean);
+  const found: string[] = [];
+  for (const c of WORK_ABROAD_COUNTRIES as readonly CountryEntry[]) {
+    const hit = words.some(
+      (w) =>
+        (c.exact?.includes(w) ?? false) ||
+        c.roots.some((r) => w.startsWith(r) && w.length - r.length <= 2),
+    );
+    if (hit) found.push(c.value);
+  }
+  return found;
+}
+
+// Схоже на працевлаштування за кордоном: згадана іноземна країна або
+// прямий вислів "робота/працевлаштування/виїзд за кордон". Просте "досвід
+// роботи за кордоном" (локальна вакансія) сюди не потрапляє.
+export function looksLikeWorkAbroad(
+  title: string,
+  description: string,
+  location: string | null | undefined,
+): boolean {
+  const text = `${title} ${description} ${location ?? ""}`;
+  if (detectForeignCountryCodes(text).length > 0) return true;
+  // "Досвід роботи за кордоном" / "стаж роботи за кордоном" — вимога до
+  // кандидата в локальній вакансії, а не пропозиція роботи за кордоном:
+  // вилучаємо такі фрази, перш ніж шукати "робота за кордон".
+  const withoutExperience = text
+    .toLowerCase()
+    .replace(/(досвід|стаж)\S*\s+(?:\S+\s+)?робот\S*\s+за\s+кордон\S*/g, " ");
+  return /(робот\S*|працевлаштуван\S*|вакансі\S*|виїзд\S*)\s+за\s+кордон/.test(
+    withoutExperience,
+  );
+}
+
+// Єдина перевірка для вакансій за кордоном (POST і PATCH користуються нею,
+// щоб правила не розходились). Повертає текст помилки або null. Діє на
+// БУДЬ-ЯКОГО роботодавця, не лише низькодовірного: навіть повністю
+// верифікована юрособа не має права посередництва в країну, якої немає в її
+// декларації. Це не питання довіри до конкретного оголошення, а юридична
+// вимога, тому перевірка поза isLowTrust.
+export function workAbroadGateError(input: {
+  isAbroad: boolean;
+  country: string | null | undefined;
+  verified: boolean;
+  listDate: string | null | undefined;
+  declaredCountries: readonly string[] | null | undefined;
+}): string | null {
+  if (!input.isAbroad) return null;
+  if (!input.verified) {
+    return "Вакансії роботи за кордоном можуть публікувати лише верифіковані посередники у працевлаштуванні. Пройдіть верифікацію (ЄДРПОУ/ІПН) у профілі й вкажіть дані про включення до Переліку Мінекономіки.";
+  }
+  if (!input.listDate?.trim()) {
+    return "Для публікації вакансій за кордоном вкажіть у профілі дату включення до Переліку суб'єктів господарювання Мінекономіки, які здійснюють посередництво у працевлаштуванні за кордоном (ліцензування скасоване, тепер діє Перелік).";
+  }
+  if (!input.country) {
+    return "Вкажіть країну працевлаштування. Для крюїнгу — країну прапора судна чи судновласника.";
+  }
+  if (!(input.declaredCountries ?? []).includes(input.country)) {
+    const label = WORK_ABROAD_COUNTRY_LABELS[input.country] ?? input.country;
+    return `Ваша декларація в Переліку Мінекономіки не містить країни "${label}". Посередник має право відправляти людей лише в країни, які вказав у декларації (за укладеними ЗЕД-договорами). Додайте країну в профілі — це знову відправить профіль на верифікацію адміном.`;
+  }
+  return null;
+}

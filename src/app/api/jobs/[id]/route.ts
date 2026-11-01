@@ -28,6 +28,9 @@ import {
   isFishingSubcategory,
   isFacilityServicePrivateHireRiskSubcategory,
   requiresMedicalLicense,
+  WORK_ABROAD_COUNTRY_CODES,
+  workAbroadGateError,
+  looksLikeWorkAbroad,
 } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
@@ -88,6 +91,7 @@ const updateJobSchema = z.object({
     .nullable()
     .optional(),
   isForeignVesselCrewing: z.boolean().optional(),
+  workAbroadCountry: z.enum(WORK_ABROAD_COUNTRY_CODES).nullable().optional(),
 });
 
 async function getJobWithOwner(jobId: string) {
@@ -98,8 +102,8 @@ async function getJobWithOwner(jobId: string) {
       employerType: employerProfiles.employerType,
       verificationStatus: employerProfiles.verificationStatus,
       businessActivity: employerProfiles.businessActivity,
-      foreignEmploymentLicenseNumber:
-        employerProfiles.foreignEmploymentLicenseNumber,
+      intermediaryListDate: employerProfiles.intermediaryListDate,
+      intermediaryCountries: employerProfiles.intermediaryCountries,
       collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
       medicalLicenseNumber: employerProfiles.medicalLicenseNumber,
       banned: employerProfiles.banned,
@@ -239,6 +243,7 @@ export async function PATCH(
       | "cruise_passenger"
       | null;
     isForeignVesselCrewing?: boolean;
+    workAbroadCountry?: string | null;
   } = { ...parsed.data };
 
   // Захист від "осиротілого" значення: якщо категорію змінили на щось
@@ -535,22 +540,43 @@ export async function PATCH(
         "Вакансія колектора від роботодавця без номера в реєстрі колекторських компаній НБУ — потрібно перевірити, що це кредитор (банк/фінкомпанія зі своєю службою стягнення), а не колектор поза реєстром.";
     }
 
-    // Крюїнг за кордон — юридична вимога незалежно від isLowTrust, див.
-    // детальний коментар у POST /api/jobs.
+    // Робота за кордоном — перевірка Переліку Мінекономіки та країн
+    // декларації, незалежно від isLowTrust; див. POST /api/jobs та
+    // workAbroadGateError у job-options.ts.
     const effectiveIsForeignVesselCrewing =
       parsed.data.isForeignVesselCrewing ?? row.job.isForeignVesselCrewing;
+    const effectiveWorkAbroadCountry =
+      parsed.data.workAbroadCountry !== undefined
+        ? parsed.data.workAbroadCountry
+        : row.job.workAbroadCountry;
+    const isAbroad =
+      !!effectiveWorkAbroadCountry ||
+      (effectiveCategory === "maritime_transport" &&
+        effectiveIsForeignVesselCrewing);
+    const abroadError = workAbroadGateError({
+      isAbroad,
+      country: effectiveWorkAbroadCountry,
+      verified: row.verificationStatus === "verified",
+      listDate: row.intermediaryListDate,
+      declaredCountries: row.intermediaryCountries,
+    });
+    if (abroadError) {
+      return NextResponse.json({ error: abroadError }, { status: 403 });
+    }
+
     if (
-      effectiveCategory === "maritime_transport" &&
-      effectiveIsForeignVesselCrewing &&
-      !row.foreignEmploymentLicenseNumber?.trim()
+      !isAbroad &&
+      updates.status !== "pending_review" &&
+      looksLikeWorkAbroad(
+        title,
+        description,
+        parsed.data.location ?? row.job.location,
+      )
     ) {
-      return NextResponse.json(
-        {
-          error:
-            'Публікація вакансій на судна під іноземним прапором (крюїнг за кордон) вимагає ліцензії Мінекономіки на посередництво у працевлаштуванні за кордоном. Вкажіть номер ліцензії у профілі роботодавця.',
-        },
-        { status: 403 },
-      );
+      updates.status = "pending_review";
+      updates.moderationCategory = "other";
+      updates.moderationReason =
+        "Схоже на працевлаштування за кордоном (згадано іноземну країну або «роботу за кордоном»), але вакансію не позначено як роботу за кордоном і країну не вказано. Посередник має бути в Переліку Мінекономіки й мати цю країну в декларації. Якщо це вакансія за кордоном — позначте країну, якщо ні — потрібен ручний розгляд.";
     }
 
     // Шоу-бізнес — див. детальний коментар у POST /api/jobs: приватного

@@ -4,7 +4,10 @@ import { db } from "@/db";
 import { employerProfiles, users } from "@/db/schema";
 import { requireRole } from "@/lib/require-role";
 import { isGenericEmailDomain, isMilGovUaDomain } from "@/lib/email-domain";
-import { EMPLOYER_TYPE_LABELS } from "@/lib/job-options";
+import {
+  EMPLOYER_TYPE_LABELS,
+  WORK_ABROAD_COUNTRY_LABELS,
+} from "@/lib/job-options";
 import { detectBaitPattern } from "@/lib/bait-heuristic";
 import EmployerVerificationActions from "@/components/employer-verification-actions";
 
@@ -147,15 +150,33 @@ export default async function AdminEmployersPage() {
                 </p>
               )}
 
-              {(employer.foreignEmploymentLicenseNumber ||
+              {(employer.intermediaryListDate ||
+                (employer.intermediaryCountries ?? []).length > 0 ||
+                employer.mlcCertificate ||
                 employer.collectionRegistryNumber ||
                 employer.medicalLicenseNumber) && (
                 <div className="flex flex-col gap-1 text-sm">
-                  {employer.foreignEmploymentLicenseNumber && (
+                  {(employer.intermediaryListDate ||
+                    (employer.intermediaryCountries ?? []).length > 0) && (
                     <p>
-                      Ліцензія Мінекономіки на працевлаштування за кордоном:{" "}
+                      Посередник у працевлаштуванні за кордоном — в Переліку
+                      Мінекономіки з:{" "}
                       <span className="font-medium">
-                        {employer.foreignEmploymentLicenseNumber}
+                        {employer.intermediaryListDate || "дата не вказана"}
+                      </span>
+                      ; країни декларації:{" "}
+                      <span className="font-medium">
+                        {(employer.intermediaryCountries ?? [])
+                          .map((c) => WORK_ABROAD_COUNTRY_LABELS[c] ?? c)
+                          .join(", ") || "не вказано"}
+                      </span>
+                    </p>
+                  )}
+                  {employer.mlcCertificate && (
+                    <p>
+                      Сертифікат MLC 2006:{" "}
+                      <span className="font-medium">
+                        {employer.mlcCertificate}
                       </span>
                     </p>
                   )}
@@ -176,8 +197,9 @@ export default async function AdminEmployersPage() {
                     </p>
                   )}
                   <span className="text-xs text-neutral-500">
-                    Самодекларовані номери — звірте з відповідним реєстром
-                    перед схваленням верифікації.
+                    Самодекларовані дані — звірте з Переліком Мінекономіки
+                    (дата й країни з декларації) та іншими реєстрами перед
+                    схваленням верифікації.
                   </span>
                 </div>
               )}

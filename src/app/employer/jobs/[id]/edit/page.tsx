@@ -49,6 +49,7 @@ export default async function EditJobPage({
         serviceCenterTier: job.serviceCenterTier ?? "",
         fleetType: job.fleetType ?? "",
         isForeignVesselCrewing: job.isForeignVesselCrewing,
+        workAbroadCountry: job.workAbroadCountry ?? "",
       }}
     />
   );

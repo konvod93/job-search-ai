@@ -28,6 +28,9 @@ import {
   isFishingSubcategory,
   isFacilityServicePrivateHireRiskSubcategory,
   requiresMedicalLicense,
+  WORK_ABROAD_COUNTRY_CODES,
+  workAbroadGateError,
+  looksLikeWorkAbroad,
 } from "@/lib/job-options";
 
 const CATEGORY_VALUES = [
@@ -89,6 +92,7 @@ const createJobSchema = z
       .enum(["river", "coastal_cabotage", "ocean_going", "cruise_passenger"])
       .optional(),
     isForeignVesselCrewing: z.boolean().optional(),
+    workAbroadCountry: z.enum(WORK_ABROAD_COUNTRY_CODES).optional(),
   })
   .refine(
     (data) => {
@@ -214,8 +218,8 @@ export async function POST(request: Request) {
       verificationStatus: employerProfiles.verificationStatus,
       employerType: employerProfiles.employerType,
       businessActivity: employerProfiles.businessActivity,
-      foreignEmploymentLicenseNumber:
-        employerProfiles.foreignEmploymentLicenseNumber,
+      intermediaryListDate: employerProfiles.intermediaryListDate,
+      intermediaryCountries: employerProfiles.intermediaryCountries,
       collectionRegistryNumber: employerProfiles.collectionRegistryNumber,
       medicalLicenseNumber: employerProfiles.medicalLicenseNumber,
       banned: employerProfiles.banned,
@@ -585,23 +589,43 @@ export async function POST(request: Request) {
         "Вакансія колектора від роботодавця без номера в реєстрі колекторських компаній НБУ — потрібно перевірити, що це кредитор (банк/фінкомпанія зі своєю службою стягнення), а не колектор поза реєстром.";
     }
 
-    // Крюїнг за кордон — юридична вимога, а не питання довіри: навіть
-    // повністю верифікована юрособа не має права посередництва у
-    // працевлаштуванні моряків на судна під іноземним прапором без
-    // ліцензії Мінекономіки. Тому перевірка стоїть окремо від isLowTrust
-    // нижче й застосовується до БУДЬ-ЯКОГО роботодавця.
+    // Робота за кордоном (будь-яка категорія: виробництво й будівництво в
+    // Польщі, патронаж в Італії/Німеччині, HoReCa в Туреччині, крюїнг):
+    // ліцензування скасоване, тепер посередник має бути в Переліку
+    // Мінекономіки й може відправляти людей лише в країни зі своєї
+    // декларації. Див. workAbroadGateError у job-options.ts.
+    const isAbroad =
+      !!parsed.data.workAbroadCountry ||
+      (parsed.data.category === "maritime_transport" &&
+        !!parsed.data.isForeignVesselCrewing);
+    const abroadError = workAbroadGateError({
+      isAbroad,
+      country: parsed.data.workAbroadCountry,
+      verified: employerProfile.verificationStatus === "verified",
+      listDate: employerProfile.intermediaryListDate,
+      declaredCountries: employerProfile.intermediaryCountries,
+    });
+    if (abroadError) {
+      return NextResponse.json({ error: abroadError }, { status: 403 });
+    }
+
+    // Не позначено як робота за кордоном, але текст/локація згадують
+    // іноземну країну — без цього досить не поставити позначку, щоб
+    // обійти перевірку Переліку. М'яко (модерація), бо детекція за
+    // ключовими словами.
     if (
-      parsed.data.category === "maritime_transport" &&
-      parsed.data.isForeignVesselCrewing &&
-      !employerProfile.foreignEmploymentLicenseNumber?.trim()
+      !isAbroad &&
+      status !== "pending_review" &&
+      looksLikeWorkAbroad(
+        parsed.data.title,
+        parsed.data.description,
+        parsed.data.location,
+      )
     ) {
-      return NextResponse.json(
-        {
-          error:
-            'Публікація вакансій на судна під іноземним прапором (крюїнг за кордон) вимагає ліцензії Мінекономіки на посередництво у працевлаштуванні за кордоном. Вкажіть номер ліцензії у профілі роботодавця.',
-        },
-        { status: 403 },
-      );
+      status = "pending_review";
+      moderationCategory = "other";
+      moderationReason =
+        "Схоже на працевлаштування за кордоном (згадано іноземну країну або «роботу за кордоном»), але вакансію не позначено як роботу за кордоном і країну не вказано. Посередник має бути в Переліку Мінекономіки й мати цю країну в декларації. Якщо це вакансія за кордоном — позначте країну, якщо ні — потрібен ручний розгляд.";
     }
 
     // Шоу-бізнес — приватного найму тут немає в принципі (не питання
@@ -877,6 +901,7 @@ export async function POST(request: Request) {
       serviceCenterTier: parsed.data.serviceCenterTier,
       fleetType: parsed.data.fleetType,
       isForeignVesselCrewing: parsed.data.isForeignVesselCrewing ?? false,
+      workAbroadCountry: parsed.data.workAbroadCountry,
     })
     .returning();
 

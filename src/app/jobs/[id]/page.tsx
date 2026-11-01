@@ -9,6 +9,7 @@ import {
   JOB_CATEGORY_LABELS,
   SERVICE_CENTER_TIER_LABELS,
   FLEET_TYPE_LABELS,
+  WORK_ABROAD_COUNTRY_LABELS,
   subcategoryLabel,
 } from "@/lib/job-options";
 import ApplyForm from "@/components/apply-form";
@@ -30,6 +31,8 @@ export default async function JobDetailPage({
       companyVerified: employerProfiles.verificationStatus,
       companyPhone: employerProfiles.phone,
       companyPhoneVisible: employerProfiles.phoneVisible,
+      intermediaryListDate: employerProfiles.intermediaryListDate,
+      mlcCertificate: employerProfiles.mlcCertificate,
     })
     .from(jobs)
     .innerJoin(employerProfiles, eq(jobs.employerId, employerProfiles.id))
@@ -47,6 +50,8 @@ export default async function JobDetailPage({
     companyVerified,
     companyPhone,
     companyPhoneVisible,
+    intermediaryListDate,
+    mlcCertificate,
   } = row;
   const publicCompanyName = displayName || companyName;
 
@@ -112,6 +117,14 @@ export default async function JobDetailPage({
         {companyPhoneVisible && companyPhone && (
           <p className="text-sm text-neutral-500">{companyPhone}</p>
         )}
+        {job.workAbroadCountry && intermediaryListDate && (
+          <p className="text-xs text-neutral-500">
+            Посередник у Переліку Мінекономіки з {intermediaryListDate}
+            {job.isForeignVesselCrewing && mlcCertificate
+              ? ` · сертифікат MLC 2006: ${mlcCertificate}`
+              : ""}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 text-sm text-neutral-600">
@@ -136,6 +149,13 @@ export default async function JobDetailPage({
         {job.isForeignVesselCrewing && (
           <span className="rounded-full bg-orange-50 px-3 py-1 text-orange-800">
             Судно під іноземним прапором
+          </span>
+        )}
+        {job.workAbroadCountry && (
+          <span className="rounded-full bg-rose-50 px-3 py-1 text-rose-800">
+            Робота за кордоном:{" "}
+            {WORK_ABROAD_COUNTRY_LABELS[job.workAbroadCountry] ??
+              job.workAbroadCountry}
           </span>
         )}
         <span className="rounded-full bg-neutral-100 px-3 py-1">

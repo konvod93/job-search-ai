@@ -7,6 +7,7 @@ import {
   JOB_CATEGORIES,
   SERVICE_CENTER_TIERS,
   FLEET_TYPES,
+  WORK_ABROAD_COUNTRIES,
   getSubcategoriesFor,
   suggestsCivilianCateringInMilitaryCategory,
 } from "@/lib/job-options";
@@ -32,6 +33,7 @@ export type JobFormValues = {
   serviceCenterTier: ServiceCenterTier | "";
   fleetType: FleetType | "";
   isForeignVesselCrewing: boolean;
+  workAbroadCountry: string;
 };
 
 const EMPTY_VALUES: JobFormValues = {
@@ -49,6 +51,7 @@ const EMPTY_VALUES: JobFormValues = {
   serviceCenterTier: "",
   fleetType: "",
   isForeignVesselCrewing: false,
+  workAbroadCountry: "",
 };
 
 export default function JobForm({
@@ -141,6 +144,9 @@ export default function JobForm({
   const [isForeignVesselCrewing, setIsForeignVesselCrewing] = useState(
     initialValues?.isForeignVesselCrewing ?? EMPTY_VALUES.isForeignVesselCrewing,
   );
+  const [workAbroadCountry, setWorkAbroadCountry] = useState(
+    initialValues?.workAbroadCountry ?? EMPTY_VALUES.workAbroadCountry,
+  );
   const [status, setStatus] = useState<Status>(
     initialValues?.status ?? EMPTY_VALUES.status,
   );
@@ -187,6 +193,8 @@ export default function JobForm({
               : undefined,
         isForeignVesselCrewing:
           category === "maritime_transport" ? isForeignVesselCrewing : false,
+        workAbroadCountry:
+          workAbroadCountry || (isEdit ? null : undefined),
       }),
     });
 
@@ -270,6 +278,36 @@ export default function JobForm({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex flex-col gap-1 rounded border border-neutral-200 p-3">
+          <label
+            htmlFor="workAbroadCountry"
+            className="text-sm font-medium text-neutral-700"
+          >
+            Країна роботи (лише якщо це працевлаштування за кордоном)
+          </label>
+          <select
+            id="workAbroadCountry"
+            value={workAbroadCountry}
+            onChange={(e) => setWorkAbroadCountry(e.target.value)}
+            className="rounded border border-neutral-300 px-3 py-2"
+          >
+            <option value="">Робота в Україні</option>
+            {WORK_ABROAD_COUNTRIES.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          {workAbroadCountry && (
+            <p className="text-xs text-neutral-500">
+              Вакансії за кордоном публікують лише верифіковані посередники
+              з Переліку Мінекономіки, і лише в ті країни, які вказані в їхній
+              декларації (профіль роботодавця). Брати плату з кандидатів за
+              працевлаштування заборонено.
+            </p>
+          )}
         </div>
 
         {category === "auto_service" && (
@@ -364,10 +402,10 @@ export default function JobForm({
                   Судно під іноземним прапором (крюїнг за кордон)
                 </span>
                 <span className="block text-xs text-neutral-500">
-                  Публікація вакансій на іноземні судна вимагає ліцензії
-                  Мінекономіки на посередництво у працевлаштуванні за
-                  кордоном — вкажіть номер ліцензії у своєму профілі,
-                  інакше публікація буде заблокована.
+                  Потрібно бути в Переліку Мінекономіки (посередники у
+                  працевлаштуванні за кордоном) і мати країну судна чи
+                  судновласника у своїй декларації. Обов&apos;язково
+                  вкажіть країну в полі &quot;Країна роботи&quot; вище.
                 </span>
               </span>
             </label>

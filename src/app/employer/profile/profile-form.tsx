@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EMPLOYER_TYPES, registrationNumberLabel } from "@/lib/job-options";
+import {
+  EMPLOYER_TYPES,
+  registrationNumberLabel,
+  WORK_ABROAD_COUNTRIES,
+} from "@/lib/job-options";
 
 type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
 type EmployerType = (typeof EMPLOYER_TYPES)[number]["value"];
@@ -30,7 +34,9 @@ export default function EmployerProfileForm({
     employerType: EmployerType | "";
     edrpou: string;
     businessActivity: string;
-    foreignEmploymentLicenseNumber: string;
+    intermediaryListDate: string;
+    intermediaryCountries: string[];
+    mlcCertificate: string;
     collectionRegistryNumber: string;
     medicalLicenseNumber: string;
   };
@@ -56,8 +62,21 @@ export default function EmployerProfileForm({
   const [businessActivity, setBusinessActivity] = useState(
     initialValues.businessActivity,
   );
-  const [foreignEmploymentLicenseNumber, setForeignEmploymentLicenseNumber] =
-    useState(initialValues.foreignEmploymentLicenseNumber);
+  const [intermediaryListDate, setIntermediaryListDate] = useState(
+    initialValues.intermediaryListDate,
+  );
+  const [intermediaryCountries, setIntermediaryCountries] = useState<string[]>(
+    initialValues.intermediaryCountries,
+  );
+  const [mlcCertificate, setMlcCertificate] = useState(
+    initialValues.mlcCertificate,
+  );
+
+  function toggleIntermediaryCountry(code: string) {
+    setIntermediaryCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  }
   const [collectionRegistryNumber, setCollectionRegistryNumber] = useState(
     initialValues.collectionRegistryNumber,
   );
@@ -88,7 +107,9 @@ export default function EmployerProfileForm({
         employerType: employerType || undefined,
         edrpou,
         businessActivity,
-        foreignEmploymentLicenseNumber,
+        intermediaryListDate,
+        intermediaryCountries,
+        mlcCertificate,
         collectionRegistryNumber,
         medicalLicenseNumber,
       }),
@@ -287,27 +308,72 @@ export default function EmployerProfileForm({
           переводить профіль у статус &quot;на розгляді&quot;.
         </p>
 
-        <label
-          htmlFor="foreignEmploymentLicenseNumber"
-          className="mt-2 text-sm text-neutral-600"
-        >
-          Номер ліцензії Мінекономіки на посередництво у працевлаштуванні за
-          кордоном (необов&apos;язково)
-        </label>
-        <input
-          id="foreignEmploymentLicenseNumber"
-          value={foreignEmploymentLicenseNumber}
-          onChange={(e) => setForeignEmploymentLicenseNumber(e.target.value)}
-          placeholder="Номер ліцензії"
-          className="rounded border border-neutral-300 px-3 py-2"
-        />
-        <p className="text-xs text-neutral-500">
-          Потрібен лише якщо плануєте публікувати вакансії на судна під
-          іноземним прапором (категорія &quot;Морський та річковий
-          транспорт&quot;, крюїнг за кордон) — без ліцензії такі вакансії
-          публікувати не можна. Адмін звіряє номер при верифікації; зміна
-          поля також знову переводить профіль у статус &quot;на розгляді&quot;.
-        </p>
+        <fieldset className="mt-2 flex flex-col gap-2 rounded border border-neutral-200 p-3">
+          <legend className="px-1 text-sm font-medium text-neutral-700">
+            Посередництво у працевлаштуванні за кордоном (необов&apos;язково)
+          </legend>
+          <p className="text-xs text-neutral-500">
+            Потрібне, якщо публікуєте вакансії роботи за кордоном
+            (виробництво чи будівництво в Польщі, патронажні працівниці в
+            Італії чи Німеччині, готелі Туреччини, крюїнг тощо). Ліцензування
+            скасоване — тепер посередник має бути в Переліку Мінекономіки й
+            може відправляти людей лише в країни, зазначені в його
+            декларації (за укладеними ЗЕД-договорами). Адмін звіряє дані з
+            Переліком; зміна цих полів знову переводить профіль у статус
+            &quot;на розгляді&quot;. Брати плату з кандидатів за
+            працевлаштування заборонено.
+          </p>
+
+          <label
+            htmlFor="intermediaryListDate"
+            className="text-sm text-neutral-600"
+          >
+            Дата включення до Переліку Мінекономіки
+          </label>
+          <input
+            id="intermediaryListDate"
+            type="date"
+            value={intermediaryListDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setIntermediaryListDate(e.target.value)}
+            className="w-48 rounded border border-neutral-300 px-3 py-2"
+          />
+
+          <span className="mt-1 text-sm text-neutral-600">
+            Країни працевлаштування з вашої декларації
+          </span>
+          <div className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto rounded border border-neutral-100 p-2 sm:grid-cols-3">
+            {WORK_ABROAD_COUNTRIES.map((c) => (
+              <label key={c.value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={intermediaryCountries.includes(c.value)}
+                  onChange={() => toggleIntermediaryCountry(c.value)}
+                />
+                {c.label}
+              </label>
+            ))}
+          </div>
+
+          <label
+            htmlFor="mlcCertificate"
+            className="mt-1 text-sm text-neutral-600"
+          >
+            Сертифікат відповідності Конвенції MLC 2006 (необов&apos;язково,
+            для крюїнгу)
+          </label>
+          <input
+            id="mlcCertificate"
+            value={mlcCertificate}
+            onChange={(e) => setMlcCertificate(e.target.value)}
+            placeholder="Номер сертифіката"
+            className="rounded border border-neutral-300 px-3 py-2"
+          />
+          <p className="text-xs text-neutral-500">
+            Не обов&apos;язковий для публікації, але його наявність
+            показується моряками на вакансії й підвищує довіру.
+          </p>
+        </fieldset>
 
         <label
           htmlFor="collectionRegistryNumber"

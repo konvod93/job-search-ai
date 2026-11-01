@@ -11,6 +11,7 @@ import {
   SERVICE_CENTER_TIER_BADGE_LABELS,
   FLEET_TYPES,
   FLEET_TYPE_BADGE_LABELS,
+  WORK_ABROAD_COUNTRY_LABELS,
   subcategoryLabel,
 } from "@/lib/job-options";
 
@@ -212,6 +213,13 @@ export default async function JobsPage({
               {job.isForeignVesselCrewing && (
                 <span className="w-fit rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
                   Іноземний прапор
+                </span>
+              )}
+              {job.workAbroadCountry && (
+                <span className="w-fit rounded-full bg-rose-50 px-2 py-0.5 text-xs text-rose-700">
+                  За кордоном:{" "}
+                  {WORK_ABROAD_COUNTRY_LABELS[job.workAbroadCountry] ??
+                    job.workAbroadCountry}
                 </span>
               )}
             </div>

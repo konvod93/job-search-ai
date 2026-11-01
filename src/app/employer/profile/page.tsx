@@ -46,8 +46,9 @@ export default async function EmployerProfilePage() {
           employerType: profile.employerType ?? "",
           edrpou: profile.edrpou ?? "",
           businessActivity: profile.businessActivity ?? "",
-          foreignEmploymentLicenseNumber:
-            profile.foreignEmploymentLicenseNumber ?? "",
+          intermediaryListDate: profile.intermediaryListDate ?? "",
+          intermediaryCountries: profile.intermediaryCountries ?? [],
+          mlcCertificate: profile.mlcCertificate ?? "",
           collectionRegistryNumber: profile.collectionRegistryNumber ?? "",
           medicalLicenseNumber: profile.medicalLicenseNumber ?? "",
         }}
